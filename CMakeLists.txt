@@ -32,6 +32,9 @@ target_link_libraries(sand-in-my-fans glad)
 #target_link_libraries(sand-in-my-fans ${GLFW_STATIC_LIBRARIES})
 
 # add glfw
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(glfw)
 target_link_libraries(sand-in-my-fans glfw)
 
