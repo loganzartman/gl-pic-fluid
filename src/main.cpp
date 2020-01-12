@@ -3,6 +3,8 @@
 #include <exception>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include "Game.hpp"
 
 /**
 * Called in the event that any GLFW function fails.
@@ -31,6 +33,8 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 }
 
 void MousePosCallback(GLFWwindow* window, double mouse_x, double mouse_y) {
+	Game* game = static_cast<Game*>(glfwGetWindowUserPointer(window));
+	game->mouse_pos = glm::dvec2(mouse_x, mouse_y);
 }
 
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
@@ -65,10 +69,13 @@ int main() {
 	glEnable(GL_DEBUG_OUTPUT);
 	glDebugMessageCallback(MessageCallback, 0);
 
+	Game game(window);
+	glfwSetWindowUserPointer(window, &game);
+
 	// main loop
-	// init here
+	game.init();
 	while (!glfwWindowShouldClose(window)) {
-		// update here
+		game.update();
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
