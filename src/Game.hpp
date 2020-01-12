@@ -9,11 +9,11 @@ public:
 
 	Game(GLFWwindow* window) : window(window) {}
 
-	void Game::init() {
+	void init() {
 
 	}
 
-	void Game::update() {
+	void update() {
 		int window_w, window_h;
 		glfwGetFramebufferSize(window, &window_w, &window_h);
 
