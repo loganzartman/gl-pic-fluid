@@ -1,4 +1,5 @@
 #include <array>
+#include <string>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -9,11 +10,13 @@ public:
     glm::dvec2 mouse_pos;
 
     GLuint rect_vao;
+    GLuint rect_program;
 
     Game(GLFWwindow* window) : window(window) {}
 
     void init() {
         create_rect_vao();
+        create_rect_program();
     }
 
     void create_rect_vao() {
@@ -68,12 +71,76 @@ public:
         glBindVertexArray(0); // unbind
     }
 
+    void create_rect_program() {
+        constexpr char const* vert_source = R"(
+            #version 430 core
+            layout (location=0) in vec2 pos;
+
+            void main() {
+                vec2 offset = vec2(100);
+                vec2 size = vec2(32.0, 32.0);
+
+                // gl_Position is probably deprecated; configure shaders correctly instead
+                gl_Position = vec4(offset + pos * size, 0.0, 1.0);
+            }
+        )";
+        constexpr char const* frag_source = R"(
+            #version 430 core 
+            out vec4 frag_color;
+            
+            void main() {
+                frag_color = vec4(1.0, 0.0, 0.0, 1.0);
+            }
+        )";
+
+        // Create shader program object
+        // https://www.khronos.org/opengl/wiki/GLSL_Object#Program_objects
+        rect_program = glCreateProgram();
+
+        // Create vertex shader program
+        // https://www.khronos.org/opengl/wiki/Shader_Compilation#Shader_and_program_objects
+        GLuint vs_id = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(
+            vs_id,        // shader ID
+            1,            // number of source strings
+            &vert_source, // array of source strings
+            NULL          // array of string lengths (NULL - null terminated)
+        );
+        glCompileShader(vs_id);
+        glAttachShader(rect_program, vs_id);
+
+        // Create fragment shader program
+        GLuint fs_id = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(
+            fs_id,        // shader ID
+            1,            // number of source strings
+            &frag_source, // array of source strings
+            NULL          // array of string lengths (NULL - null terminated)
+        );
+        glCompileShader(fs_id);
+        glAttachShader(rect_program, fs_id);
+
+        // we could do more configuration before linking, but we will leave defaults
+        // https://www.khronos.org/opengl/wiki/Shader_Compilation#Before_linking
+
+        glLinkProgram(rect_program);
+    }
+
     void update() {
         int window_w, window_h;
         glfwGetFramebufferSize(window, &window_w, &window_h);
 
         glViewport(0, 0, window_w, window_h);
+
+        // clear screen
         glClearColor(0.25, 0.45, 0.75, 1.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // draw rectangle
+        glUseProgram(rect_program);
+        glBindVertexArray(rect_vao);
+        glDrawArrays(GL_TRIANGLES, /* first */ 0, /* count */ 4);
+        glBindVertexArray(0); // unbind
+        glUseProgram(0); // unbind
     }
 };
