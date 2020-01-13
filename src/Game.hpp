@@ -77,11 +77,8 @@ public:
             layout (location=0) in vec2 pos;
 
             void main() {
-                vec2 offset = vec2(100);
-                vec2 size = vec2(32.0, 32.0);
-
                 // gl_Position is probably deprecated; configure shaders correctly instead
-                gl_Position = vec4(offset + pos * size, 0.0, 1.0);
+                gl_Position = vec4(pos, 0.0, 1.0);
             }
         )";
         constexpr char const* frag_source = R"(
@@ -139,7 +136,7 @@ public:
         // draw rectangle
         glUseProgram(rect_program);
         glBindVertexArray(rect_vao);
-        glDrawArrays(GL_TRIANGLES, /* first */ 0, /* count */ 4);
+        glDrawArrays(GL_TRIANGLE_FAN, /* first */ 0, /* count */ 4);
         glBindVertexArray(0); // unbind
         glUseProgram(0); // unbind
     }
