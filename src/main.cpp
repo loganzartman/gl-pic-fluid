@@ -25,8 +25,11 @@ MessageCallback(GLenum source,
     const void* userParam)
 {
     fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
-        (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
+        (type == GL_DEBUG_TYPE_ERROR ? "ERROR!" : ""),
         type, severity, message);
+    if (severity == GL_DEBUG_SEVERITY_HIGH) {
+        throw std::runtime_error("GL High Severity error");
+    }
 }
 
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -67,6 +70,7 @@ int main() {
 
     // Enable GL error/debug reporting
     glEnable(GL_DEBUG_OUTPUT);
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     glDebugMessageCallback(MessageCallback, 0);
 
     Game game(window);
