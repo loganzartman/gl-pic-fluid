@@ -4,6 +4,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/random.hpp>
 #include "util.hpp"
 
 class Game {
@@ -13,7 +14,8 @@ public:
         glm::vec2 vel;
     };
 
-    const int num_particles = 100;
+    const int circle_vertices = 16;
+    const int num_particles = 500;
 
     GLFWwindow* window;
     glm::dvec2 mouse_pos;
@@ -22,6 +24,7 @@ public:
     GLuint rect_program;
     GLuint particles_ssbo;
     GLuint particles_compute_program;
+    GLuint particles_vao;
 
     Game(GLFWwindow* window) : window(window) {}
 
@@ -30,6 +33,7 @@ public:
         create_rect_program();
         create_particles_ssbo();
         create_particles_compute_program();
+        create_particles_vao();
     }
 
     void create_rect_vao() {
@@ -113,11 +117,6 @@ public:
 
             void main() {
                 frag_color = vec4(uv, 0.0, 1.0);
-                for (int i = 0; i < particle.length(); ++i) {
-                    if (distance(uv, particle[i].pos) < 0.05) {
-                        frag_color = vec4(0.0, 0.0, 1.0, 1.0);
-                    }
-                }
             }
         )";
 
@@ -156,7 +155,13 @@ public:
     }
 
     void create_particles_ssbo() {
-        std::vector<Particle> initial = std::vector(num_particles, Particle());
+        std::vector<Particle> initial;
+        for (int i = 0; i < num_particles; ++i) {
+            initial.emplace_back(Particle{
+                .pos = glm::linearRand(glm::vec2(0.3), glm::vec2(0.7)),
+                .vel = glm::diskRand(0.05)
+            });
+        }
 
         // https://www.khronos.org/opengl/wiki/Shader_Storage_Buffer_Object
         glGenBuffers(1, &particles_ssbo);
@@ -183,7 +188,6 @@ public:
             void main() {
                 uint index = gl_WorkGroupID.x;
                 particle[index].pos += particle[index].vel;
-                particle[index].vel.y += 0.01;
             }
         )";
 
@@ -194,6 +198,10 @@ public:
         glAttachShader(particles_compute_program, cs_id);
         glLinkProgram(particles_compute_program);
         check_program_errors(particles_compute_program);
+    }
+
+    void create_particles_vao() {
+
     }
 
     void update() {
@@ -222,5 +230,12 @@ public:
         glDrawArrays(GL_TRIANGLE_FAN, /* first */ 0, /* count */ 4);
         glBindVertexArray(0); // unbind
         glUseProgram(0); // unbind
+
+        // draw particles
+        glUseProgram(particles_program);
+        glBindVertexArray(particles_vao);
+        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, circle_vertices, num_particles);
+        glBindVertexArray(0);
+        glUseProgram(0);
     }
 };

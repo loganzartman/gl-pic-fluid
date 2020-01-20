@@ -54,7 +54,7 @@ int main() {
     // create window and GL context
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Sand in my Fans", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(800, 800, "Sand in my Fans", NULL, NULL);
     if (!window) { throw std::runtime_error("glfwCreateWindow failed"); }
     glfwMakeContextCurrent(window);
     gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
