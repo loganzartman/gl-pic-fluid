@@ -102,8 +102,22 @@ public:
             in vec2 uv;
             out vec4 frag_color;
             
+            struct Particle {
+                vec2 pos;
+                vec2 vel;
+            };
+
+            layout(std430, binding=0) buffer ParticleBlock {
+                Particle particle[];
+            };
+
             void main() {
                 frag_color = vec4(uv, 0.0, 1.0);
+                for (int i = 0; i < particle.length(); ++i) {
+                    if (distance(uv, particle[i].pos) < 0.05) {
+                        frag_color = vec4(0.0, 0.0, 1.0, 1.0);
+                    }
+                }
             }
         )";
 
