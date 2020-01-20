@@ -5,6 +5,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/random.hpp>
+#include <glm/gtc/constants.hpp>
 #include "util.hpp"
 
 class Game {
@@ -14,17 +15,18 @@ public:
         glm::vec2 vel;
     };
 
-    const int circle_vertices = 16;
+    const int num_circle_vertices = 16; // circle detail for particle rendering
     const int num_particles = 500;
 
     GLFWwindow* window;
     glm::dvec2 mouse_pos;
 
-    GLuint rect_vao;
-    GLuint rect_program;
-    GLuint particles_ssbo;
-    GLuint particles_compute_program;
-    GLuint particles_vao;
+    GLuint rect_vao;                  // VAO for background rectangle
+    GLuint rect_program;              // program for background rectangle
+    GLuint particles_ssbo;            // particle data storage
+    GLuint particles_compute_program; // compute shader to operate on particles SSBO
+    GLuint particles_vao;             // VAO for particle rendering
+    GLuint particles_program;         // program for particle rendering
 
     Game(GLFWwindow* window) : window(window) {}
 
@@ -34,6 +36,7 @@ public:
         create_particles_ssbo();
         create_particles_compute_program();
         create_particles_vao();
+        create_particles_program();
     }
 
     void create_rect_vao() {
@@ -96,9 +99,8 @@ public:
 
             void main() {
                 // gl_Position is probably deprecated; configure shaders correctly instead
-                gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+                gl_Position = vec4(pos, 0.0, 1.0);
                 uv = pos;
-                uv.y = 1.0 - uv.y;
             }
         )";
         constexpr char const* frag_source = R"(
@@ -159,7 +161,7 @@ public:
         for (int i = 0; i < num_particles; ++i) {
             initial.emplace_back(Particle{
                 .pos = glm::linearRand(glm::vec2(0.3), glm::vec2(0.7)),
-                .vel = glm::diskRand(0.05)
+                .vel = glm::diskRand(0.001)
             });
         }
 
@@ -201,7 +203,72 @@ public:
     }
 
     void create_particles_vao() {
+        // circle vertices (for triangle fan)
+        std::vector<glm::vec2> circle;
+        for (int i = 0; i < num_circle_vertices; ++i) {
+            const float f = static_cast<float>(i) / num_circle_vertices * glm::pi<float>() * 2.0;
+            circle.emplace_back(glm::vec2(glm::sin(f), glm::cos(f)));
+        }
 
+        glGenVertexArrays(1, &particles_vao);
+        glBindVertexArray(particles_vao);
+
+        // non-instanced circle geometry
+        GLuint circle_vbo;
+        glGenBuffers(1, &circle_vbo);
+
+        glEnableVertexAttribArray(0);
+        glBindVertexBuffer(0, circle_vbo, 0, sizeof(glm::vec2));
+        glVertexAttribFormat(0, glm::vec2::length(), GL_FLOAT, GL_FALSE, 0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, circle_vbo);
+        glBufferData(GL_ARRAY_BUFFER, circle.size() * sizeof(glm::vec2), circle.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0); // unbind
+
+        // instanced particle position data
+        glEnableVertexAttribArray(1);
+        glBindVertexBuffer(1, particles_ssbo, offsetof(Particle, pos), sizeof(Particle));
+        glVertexAttribFormat(1, glm::vec2::length(), GL_FLOAT, GL_FALSE, 0);
+        // https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glVertexAttribDivisor.xhtml
+        glVertexAttribDivisor(1, 1); // one attribute value per instance
+
+        glBindVertexArray(0); // unbind
+    }
+
+    void create_particles_program() {
+        constexpr char const* vert_src = R"(
+            #version 430 core
+            layout(location=0) in vec2 vertex_pos;
+            layout(location=1) in vec2 particle_pos;
+
+            void main() {
+                const float radius = 0.05;
+                gl_Position = vec4(particle_pos + vertex_pos * radius * 0.5, 0.0, 1.0);
+            }
+        )";
+        constexpr char const* frag_src = R"(
+            #version 430 core
+            out vec4 frag_color;
+
+            void main() {
+                frag_color = vec4(0.0, 0.0, 1.0, 1.0);
+            }
+        )";
+
+        particles_program = glCreateProgram();
+        
+        GLuint vert_id = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vert_id, 1, &vert_src, NULL);
+        glCompileShader(vert_id);
+        glAttachShader(particles_program, vert_id);
+
+        GLuint frag_id = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(frag_id, 1, &frag_src, NULL);
+        glCompileShader(frag_id);
+        glAttachShader(particles_program, frag_id);
+
+        glLinkProgram(particles_program);
+        check_program_errors(particles_program);
     }
 
     void update() {
@@ -234,7 +301,7 @@ public:
         // draw particles
         glUseProgram(particles_program);
         glBindVertexArray(particles_vao);
-        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, circle_vertices, num_particles);
+        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, num_circle_vertices, num_particles);
         glBindVertexArray(0);
         glUseProgram(0);
     }
