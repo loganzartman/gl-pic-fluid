@@ -166,7 +166,7 @@ public:
         // https://www.khronos.org/opengl/wiki/Shader_Storage_Buffer_Object
         glGenBuffers(1, &particles_ssbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, particles_ssbo);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, initial.size(), initial.data(), GL_STATIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, initial.size() * sizeof(Particle), initial.data(), GL_STATIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, particles_ssbo);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); // unbind
     }
