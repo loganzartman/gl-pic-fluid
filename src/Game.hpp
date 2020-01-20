@@ -88,18 +88,22 @@ public:
         constexpr char const* vert_source = R"(
             #version 430 core
             layout (location=0) in vec2 pos;
+            out vec2 uv;
 
             void main() {
                 // gl_Position is probably deprecated; configure shaders correctly instead
-                gl_Position = vec4(pos, 0.0, 1.0);
+                gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+                uv = pos;
+                uv.y = 1.0 - uv.y;
             }
         )";
         constexpr char const* frag_source = R"(
             #version 430 core 
+            in vec2 uv;
             out vec4 frag_color;
             
             void main() {
-                frag_color = vec4(1.0, 0.0, 0.0, 1.0);
+                frag_color = vec4(uv, 0.0, 1.0);
             }
         )";
 
