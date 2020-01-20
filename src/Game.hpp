@@ -6,6 +6,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/random.hpp>
 #include <glm/gtc/constants.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include "util.hpp"
 
 class Game {
@@ -97,9 +99,10 @@ public:
             layout (location=0) in vec2 pos;
             out vec2 uv;
 
+            uniform mat4 projection;
+
             void main() {
-                // gl_Position is probably deprecated; configure shaders correctly instead
-                gl_Position = vec4(pos, 0.0, 1.0);
+                gl_Position = projection * vec4(pos, 0.0, 1.0);
                 uv = pos;
             }
         )";
@@ -238,12 +241,14 @@ public:
     void create_particles_program() {
         constexpr char const* vert_src = R"(
             #version 430 core
-            layout(location=0) in vec2 vertex_pos;
+            layout(location=0) in vec2 circle_offset;
             layout(location=1) in vec2 particle_pos;
+            uniform mat4 projection;
 
             void main() {
                 const float radius = 0.05;
-                gl_Position = vec4(particle_pos + vertex_pos * radius * 0.5, 0.0, 1.0);
+                vec2 vertex_pos = particle_pos + circle_offset * radius * 0.5;
+                gl_Position = projection * vec4(vertex_pos, 0.0, 1.0);
             }
         )";
         constexpr char const* frag_src = R"(
@@ -282,6 +287,7 @@ public:
         glUseProgram(0); // unbind
 
         glViewport(0, 0, window_w, window_h);
+        const glm::mat4 projection = glm::ortho(0.f, 1.f, 1.f, 0.f);
 
         // clear screen
         glClearColor(0.25, 0.45, 0.75, 1.0);
@@ -293,6 +299,12 @@ public:
 
         // draw rectangle
         glUseProgram(rect_program);
+        glUniformMatrix4fv(
+            glGetUniformLocation(rect_program, "projection"), // uniform location
+            1,                                                // count
+            GL_FALSE,                                         // transpose
+            glm::value_ptr(projection)                        // pointer to data
+        );
         glBindVertexArray(rect_vao);
         glDrawArrays(GL_TRIANGLE_FAN, /* first */ 0, /* count */ 4);
         glBindVertexArray(0); // unbind
@@ -300,6 +312,12 @@ public:
 
         // draw particles
         glUseProgram(particles_program);
+        glUniformMatrix4fv(
+            glGetUniformLocation(particles_program, "projection"),
+            1,
+            GL_FALSE,
+            glm::value_ptr(projection)
+        );
         glBindVertexArray(particles_vao);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, num_circle_vertices, num_particles);
         glBindVertexArray(0);
