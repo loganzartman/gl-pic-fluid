@@ -1,22 +1,35 @@
 #include <array>
 #include <string>
+#include <vector>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
+#include "util.hpp"
 
 class Game {
 public:
+    struct Particle {
+        glm::vec2 pos;
+        glm::vec2 vel;
+    };
+
+    const int num_particles = 100;
+
     GLFWwindow* window;
     glm::dvec2 mouse_pos;
 
     GLuint rect_vao;
     GLuint rect_program;
+    GLuint particles_ssbo;
+    GLuint particles_compute_program;
 
     Game(GLFWwindow* window) : window(window) {}
 
     void init() {
         create_rect_vao();
         create_rect_program();
+        create_particles_ssbo();
+        create_particles_compute_program();
     }
 
     void create_rect_vao() {
@@ -121,17 +134,69 @@ public:
         // https://www.khronos.org/opengl/wiki/Shader_Compilation#Before_linking
 
         glLinkProgram(rect_program);
+        check_program_errors(rect_program);
+    }
+
+    void create_particles_ssbo() {
+        std::vector<Particle> initial = std::vector(num_particles, Particle());
+
+        // https://www.khronos.org/opengl/wiki/Shader_Storage_Buffer_Object
+        glGenBuffers(1, &particles_ssbo);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, particles_ssbo);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, initial.size(), initial.data(), GL_STATIC_DRAW);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, particles_ssbo);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); // unbind
+    }
+
+    void create_particles_compute_program() {
+        constexpr char const* compute_src = R"(
+            #version 430 core
+            layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+            struct Particle {
+                vec2 pos;
+                vec2 vel;
+            };
+
+            layout(std430, binding=0) buffer ParticleBlock {
+                Particle particle[];
+            };
+
+            void main() {
+                uint index = gl_WorkGroupID.x;
+                particle[index].pos += particle[index].vel;
+                particle[index].vel.y += 0.01;
+            }
+        )";
+
+        particles_compute_program = glCreateProgram();
+        GLuint cs_id = glCreateShader(GL_COMPUTE_SHADER);
+        glShaderSource(cs_id, 1, &compute_src, NULL);
+        glCompileShader(cs_id);
+        glAttachShader(particles_compute_program, cs_id);
+        glLinkProgram(particles_compute_program);
+        check_program_errors(particles_compute_program);
     }
 
     void update() {
         int window_w, window_h;
         glfwGetFramebufferSize(window, &window_w, &window_h);
 
+        // dispatch compute shader
+        // https://www.khronos.org/opengl/wiki/Compute_Shader#Dispatch
+        glUseProgram(particles_compute_program);
+        glDispatchCompute(num_particles, 1, 1);
+        glUseProgram(0); // unbind
+
         glViewport(0, 0, window_w, window_h);
 
         // clear screen
         glClearColor(0.25, 0.45, 0.75, 1.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // wait for compute shader
+        // https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
         // draw rectangle
         glUseProgram(rect_program);
