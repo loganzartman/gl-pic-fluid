@@ -15,6 +15,7 @@ public:
     struct Particle {
         glm::vec2 pos;
         glm::vec2 vel;
+        glm::vec4 color;
     };
 
     const int num_circle_vertices = 16; // circle detail for particle rendering
@@ -163,8 +164,9 @@ public:
         std::vector<Particle> initial;
         for (int i = 0; i < num_particles; ++i) {
             initial.emplace_back(Particle{
-                .pos = glm::linearRand(glm::vec2(0.3), glm::vec2(0.7)),
-                .vel = glm::diskRand(0.001)
+                glm::linearRand(glm::vec2(0.3), glm::vec2(0.7)),
+                glm::diskRand(0.001),
+                glm::linearRand(glm::vec4(0.0), glm::vec4(1.0))
             });
         }
 
@@ -184,6 +186,7 @@ public:
             struct Particle {
                 vec2 pos;
                 vec2 vel;
+                vec4 color;
             };
 
             layout(std430, binding=0) buffer ParticleBlock {
@@ -235,6 +238,12 @@ public:
         // https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glVertexAttribDivisor.xhtml
         glVertexAttribDivisor(1, 1); // one attribute value per instance
 
+        // instanced particle color data
+        glEnableVertexAttribArray(2);
+        glBindVertexBuffer(2, particles_ssbo, offsetof(Particle, color), sizeof(Particle));
+        glVertexAttribFormat(2, glm::vec4::length(), GL_FLOAT, GL_FALSE, 0);
+        glVertexAttribDivisor(2, 1);
+
         glBindVertexArray(0); // unbind
     }
 
@@ -243,20 +252,24 @@ public:
             #version 430 core
             layout(location=0) in vec2 circle_offset;
             layout(location=1) in vec2 particle_pos;
+            layout(location=2) in vec4 particle_color;
+            out vec4 color;
             uniform mat4 projection;
 
             void main() {
                 const float radius = 0.05;
                 vec2 vertex_pos = particle_pos + circle_offset * radius * 0.5;
                 gl_Position = projection * vec4(vertex_pos, 0.0, 1.0);
+                color = particle_color;
             }
         )";
         constexpr char const* frag_src = R"(
             #version 430 core
+            in vec4 color;
             out vec4 frag_color;
 
             void main() {
-                frag_color = vec4(0.0, 0.0, 1.0, 1.0);
+                frag_color = color;
             }
         )";
 
