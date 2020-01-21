@@ -260,7 +260,7 @@ public:
                 const float radius = 0.05;
                 vec2 vertex_pos = particle_pos + circle_offset * radius * 0.5;
                 gl_Position = projection * vec4(vertex_pos, 0.0, 1.0);
-                color = particle_color;
+                color = normalize(gl_Position + particle_color);
             }
         )";
         constexpr char const* frag_src = R"(
