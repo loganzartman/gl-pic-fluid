@@ -37,10 +37,20 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 
 void MousePosCallback(GLFWwindow* window, double mouse_x, double mouse_y) {
     Game* game = static_cast<Game*>(glfwGetWindowUserPointer(window));
-    game->mouse_pos = glm::dvec2(mouse_x, mouse_y);
+    game->mouse_pos = glm::vec2(mouse_x, mouse_y);
 }
 
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+    Game* game = static_cast<Game*>(glfwGetWindowUserPointer(window));
+    if (button == GLFW_MOUSE_BUTTON_1) {
+        if (action == GLFW_PRESS) {
+            game->mouse_right_dragging = true;
+            game->mouse_right_drag_start = game->mouse_pos;
+        }
+        if (action == GLFW_RELEASE) {
+            game->mouse_right_dragging = false;
+        }
+    }
 }
 
 void FramebufferSizeCallback(GLFWwindow* window, int w, int h) {
@@ -54,7 +64,7 @@ int main() {
     // create window and GL context
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    GLFWwindow* window = glfwCreateWindow(800, 800, "Sand in my Fans", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(800, 800, "gl-pic-fluid", NULL, NULL);
     if (!window) { throw std::runtime_error("glfwCreateWindow failed"); }
     glfwMakeContextCurrent(window);
     gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);

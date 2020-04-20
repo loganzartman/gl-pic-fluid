@@ -15,6 +15,6 @@ static void check_program_errors(GLuint program_id) {
         glGetProgramInfoLog(program_id, max_length, NULL, &info_log[0]);
 
         const std::string err = "GLSL linking error for program: ";
-        throw std::runtime_error(err + "YEETMUS" + "\n" + info_log.data());
+        throw std::runtime_error(err + "\n" + info_log.data());
     }
 }

@@ -3,26 +3,42 @@
 #include <vector>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/random.hpp>
 #include <glm/gtc/constants.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/transform.hpp>
+#include <glm/gtx/rotate_vector.hpp>
+#include <glm/gtx/vec_swizzle.hpp>
+
 #include "util.hpp"
 
 class Game {
 public:
+    const float pi = glm::pi<float>();
     struct Particle {
-        glm::vec2 pos;
-        glm::vec2 vel;
+        glm::vec3 pos;
+        float pad0;
+        glm::vec3 vel;
+        float pad1;
         glm::vec4 color;
+
+        Particle(glm::vec3 pos, glm::vec3 vel, glm::vec4 color) : pos(pos), vel(vel), color(color) {}
     };
 
-    const int num_circle_vertices = 16; // circle detail for particle rendering
-    const int num_particles = 500;
+    const int num_circle_vertices = 8; // circle detail for particle rendering
+    const int num_particles = 5000;
 
     GLFWwindow* window;
-    glm::dvec2 mouse_pos;
+    glm::vec2 mouse_pos;
+    glm::vec2 mouse_right_drag_start;
+    bool mouse_right_dragging = false;
+
+    const float camera_speed = 0.003;
+    float camera_yaw;
+    float camera_pitch;
 
     GLuint rect_vao;                  // VAO for background rectangle
     GLuint rect_program;              // program for background rectangle
@@ -59,13 +75,13 @@ public:
             0,                // binding (attribute) index
             rect_vbo,         // buffer
             0,                // offset of first element
-            sizeof(glm::vec2) // stride
+            sizeof(glm::vec3) // stride
         );
         // notice how we could bind different slices of the same buffer to different attributes using offset and stride.
         
         glVertexAttribFormat(
             0,                   // attribute index
-            glm::vec2::length(), // size (number of components)
+            glm::vec3::length(), // size (number of components)
             GL_FLOAT,            // type of components
             GL_FALSE,            // normalize integer type?
             0                    // "added to the buffer binding's offset to get the offset for this attribute"
@@ -73,11 +89,10 @@ public:
 
         // could use glVertexBindingDivisor() to do instancing
 
-        constexpr std::array<glm::vec2, 4> vbo_data{
-            glm::vec2(0, 0),
-            glm::vec2(1, 0),
-            glm::vec2(1, 1),
-            glm::vec2(0, 1)
+        constexpr std::array<glm::vec3, 8> vbo_data{
+            glm::vec3(-1.f, -1.f, -1.f), glm::vec3(1.0f, -1.f, -1.f), glm::vec3(1.0f, -1.f, 1.0f), 
+            glm::vec3(-1.f, -1.f, 1.0f), glm::vec3(-1.f, 1.0f, 1.0f), glm::vec3(-1.f, 1.0f, -1.f),
+            glm::vec3(1.0f, 1.0f, -1.f), glm::vec3(1.0f, 1.0f, 1.0f)
         };
 
         // load data into the VBO
@@ -85,7 +100,7 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, rect_vbo);
         glBufferData(
             GL_ARRAY_BUFFER,                     // target
-            vbo_data.size() * sizeof(glm::vec2), // size in bytes of data
+            vbo_data.size() * sizeof(glm::vec3), // size in bytes of data
             vbo_data.data(),                     // pointer to data
             GL_STATIC_DRAW                       // usage (GL_STATIC_DRAW - unlikely to be updated)
         );
@@ -97,14 +112,15 @@ public:
     void create_rect_program() {
         constexpr char const* vert_source = R"(
             #version 430 core
-            layout (location=0) in vec2 pos;
+            layout (location=0) in vec3 pos;
             out vec2 uv;
 
             uniform mat4 projection;
+            uniform mat4 view;
 
             void main() {
-                gl_Position = projection * vec4(pos, 0.0, 1.0);
-                uv = pos;
+                gl_Position = projection * view * vec4(pos, 1.0);
+                uv = gl_Position.xy;
             }
         )";
         constexpr char const* frag_source = R"(
@@ -112,17 +128,8 @@ public:
             in vec2 uv;
             out vec4 frag_color;
             
-            struct Particle {
-                vec2 pos;
-                vec2 vel;
-            };
-
-            layout(std430, binding=0) buffer ParticleBlock {
-                Particle particle[];
-            };
-
             void main() {
-                frag_color = vec4(uv, 0.0, 1.0);
+                frag_color = vec4(1.0, 1.0, 1.0, 1.0);
             }
         )";
 
@@ -164,8 +171,8 @@ public:
         std::vector<Particle> initial;
         for (int i = 0; i < num_particles; ++i) {
             initial.emplace_back(Particle{
-                glm::linearRand(glm::vec2(0.3), glm::vec2(0.7)),
-                glm::diskRand(0.001),
+                glm::linearRand(glm::vec3(-1.0), glm::vec3(1.0)),
+                glm::sphericalRand(0.001),
                 glm::linearRand(glm::vec4(0.0), glm::vec4(1.0))
             });
         }
@@ -184,8 +191,10 @@ public:
             layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
             struct Particle {
-                vec2 pos;
-                vec2 vel;
+                vec3 pos;
+                float pad0;
+                vec3 vel;
+                float pad1;
                 vec4 color;
             };
 
@@ -195,7 +204,7 @@ public:
 
             void main() {
                 uint index = gl_WorkGroupID.x;
-                particle[index].pos += particle[index].vel;
+                // particle[index].pos += particle[index].vel;
             }
         )";
 
@@ -234,7 +243,7 @@ public:
         // instanced particle position data
         glEnableVertexAttribArray(1);
         glBindVertexBuffer(1, particles_ssbo, offsetof(Particle, pos), sizeof(Particle));
-        glVertexAttribFormat(1, glm::vec2::length(), GL_FLOAT, GL_FALSE, 0);
+        glVertexAttribFormat(1, glm::vec3::length(), GL_FLOAT, GL_FALSE, 0);
         // https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glVertexAttribDivisor.xhtml
         glVertexAttribDivisor(1, 1); // one attribute value per instance
 
@@ -251,16 +260,18 @@ public:
         constexpr char const* vert_src = R"(
             #version 430 core
             layout(location=0) in vec2 circle_offset;
-            layout(location=1) in vec2 particle_pos;
+            layout(location=1) in vec3 particle_pos;
             layout(location=2) in vec4 particle_color;
             out vec4 color;
             uniform mat4 projection;
+            uniform mat4 view;
 
             void main() {
-                const float radius = 0.05;
-                vec2 vertex_pos = particle_pos + circle_offset * radius * 0.5;
-                gl_Position = projection * vec4(vertex_pos, 0.0, 1.0);
-                color = normalize(gl_Position + particle_color);
+                const float radius = 0.025;
+                vec3 particle_pos_world = (view * vec4(particle_pos, 1.0)).xyz;
+                vec3 vertex_pos_world = particle_pos_world + vec3(circle_offset, 0) * radius * 0.5;
+                gl_Position = projection * vec4(vertex_pos_world, 1.0);
+                color = particle_color;
             }
         )";
         constexpr char const* frag_src = R"(
@@ -289,9 +300,24 @@ public:
         check_program_errors(particles_program);
     }
 
+    void update_camera() {
+        if (mouse_right_dragging) {
+            const glm::vec2 dx = (mouse_pos - mouse_right_drag_start) * camera_speed;
+            camera_yaw -= dx.x;
+            camera_pitch -= dx.y;
+
+            const float pitch_limit = pi/2-0.001;
+            camera_pitch = glm::clamp(camera_pitch, -pitch_limit, pitch_limit);
+            mouse_right_drag_start = mouse_pos;
+        }
+    }
+
     void update() {
+        const double t = glfwGetTime();
         int window_w, window_h;
         glfwGetFramebufferSize(window, &window_w, &window_h);
+
+        update_camera();
 
         // dispatch compute shader
         // https://www.khronos.org/opengl/wiki/Compute_Shader#Dispatch
@@ -300,10 +326,20 @@ public:
         glUseProgram(0); // unbind
 
         glViewport(0, 0, window_w, window_h);
-        const glm::mat4 projection = glm::ortho(0.f, 1.f, 1.f, 0.f);
+
+        // projection matrix
+        const float aspect_ratio = static_cast<double>(window_w) / window_h;
+        const glm::mat4 projection = glm::perspective(glm::radians(30.f), aspect_ratio, 0.1f, 100.f);
+
+        // view matrix (orbit camera) 
+        glm::vec3 eye(0, 0, 5);
+        eye = glm::rotate(eye, camera_yaw, glm::vec3(0, 1, 0));
+        eye = glm::rotate(eye, camera_pitch, glm::cross(glm::vec3(0, 1, 0), eye));
+        const glm::mat4 view = glm::lookAt(eye, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 
         // clear screen
-        glClearColor(0.25, 0.45, 0.75, 1.0);
+        glEnable(GL_DEPTH_TEST);
+        glClearColor(0.16, 0.14, 0.10, 1.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // wait for compute shader
@@ -318,19 +354,21 @@ public:
             GL_FALSE,                                         // transpose
             glm::value_ptr(projection)                        // pointer to data
         );
+        glUniformMatrix4fv(glGetUniformLocation(rect_program, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glBindVertexArray(rect_vao);
-        glDrawArrays(GL_TRIANGLE_FAN, /* first */ 0, /* count */ 4);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, std::array<uint, 36>{
+            0, 3, 2, 2, 1, 0, 0, 5, 4, 4, 3, 0, 0, 1, 6, 6, 5, 0, 5, 6, 7, 7,
+            4, 5, 1, 2, 7, 7, 6, 1, 3, 4, 7, 7, 2, 3
+        }.data());
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glBindVertexArray(0); // unbind
         glUseProgram(0); // unbind
 
         // draw particles
         glUseProgram(particles_program);
-        glUniformMatrix4fv(
-            glGetUniformLocation(particles_program, "projection"),
-            1,
-            GL_FALSE,
-            glm::value_ptr(projection)
-        );
+        glUniformMatrix4fv(glGetUniformLocation(particles_program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+        glUniformMatrix4fv(glGetUniformLocation(particles_program, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glBindVertexArray(particles_vao);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, num_circle_vertices, num_particles);
         glBindVertexArray(0);
