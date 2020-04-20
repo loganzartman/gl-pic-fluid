@@ -26,8 +26,8 @@ public:
     bool mouse_right_dragging = false;
 
     const float camera_speed = 0.003;
-    float camera_yaw;
-    float camera_pitch;
+    float camera_yaw = 0;
+    float camera_pitch = 0;
 
     Particles particles = Particles(500);
     Box box;    
