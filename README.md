@@ -1,6 +1,6 @@
-# sand-in-my-fans
+# gl-pic-fluid
 
-*Next-generation falling sand clone*
+*Realtime 3D particle-in-cell fluid simulation*
 
 ## Requirements
 
