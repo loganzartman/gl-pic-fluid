@@ -29,7 +29,7 @@ public:
     float camera_yaw = 0;
     float camera_pitch = 0;
 
-    Fluid fluid = Fluid(500);
+    Fluid fluid;
     Box box;    
 
     Game(GLFWwindow* window) : window(window) {}

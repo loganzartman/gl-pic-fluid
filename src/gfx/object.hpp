@@ -10,7 +10,9 @@ namespace gfx {
 static constexpr GLuint NOT_INSTANCED = 0;
 static constexpr GLuint INSTANCED = 1;
 
-struct Buffer {
+class Buffer {
+    int _size = 0, _length = 0;
+public:
     const GLuint target;
     GLuint id;
     
@@ -29,6 +31,14 @@ struct Buffer {
     void unbind() {
         glBindBuffer(target, 0);
     }
+
+    int size() {
+        return _size;
+    }
+
+    int length() {
+        return _length;
+    }
     
     Buffer& bind_base(GLuint index) {
         glBindBufferBase(target, index, id);
@@ -40,6 +50,8 @@ struct Buffer {
         glBindBuffer(target, id);
         glBufferData(target, sizeof(T) * data.size(), data.data(), usage);
         glBindBuffer(target, 0); // unbind
+        _length = data.size();
+        _size = data.size() * sizeof(T);
     } 
 };
 
