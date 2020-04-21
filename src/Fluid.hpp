@@ -9,7 +9,7 @@
 #include "gfx/object.hpp"
 #include "gfx/program.hpp"
 
-struct Particles {
+struct Fluid {
     const int num_circle_vertices = 8; // circle detail for particle rendering
     const int num_particles;
 
@@ -20,7 +20,7 @@ struct Particles {
     gfx::Program compute_program; // compute shader to operate on particles SSBO
     gfx::Program program; // program for particle rendering
 
-    Particles(int num_particles) : num_particles(num_particles) {
+    Fluid(int num_particles) : num_particles(num_particles) {
         std::vector<Particle> initial;
         for (int i = 0; i < num_particles; ++i) {
             initial.emplace_back(Particle{

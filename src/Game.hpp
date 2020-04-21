@@ -13,7 +13,7 @@
 #include <glm/gtx/vec_swizzle.hpp>
 
 #include "Box.hpp"
-#include "Particles.hpp"
+#include "Fluid.hpp"
 #include "util.hpp"
 
 class Game {
@@ -29,7 +29,7 @@ public:
     float camera_yaw = 0;
     float camera_pitch = 0;
 
-    Particles particles = Particles(500);
+    Fluid fluid = Fluid(500);
     Box box;    
 
     Game(GLFWwindow* window) : window(window) {}
@@ -54,7 +54,7 @@ public:
         glfwGetFramebufferSize(window, &window_w, &window_h);
 
         update_camera();
-        particles.dispatch_compute();
+        fluid.dispatch_compute();
 
         glViewport(0, 0, window_w, window_h);
 
@@ -73,8 +73,8 @@ public:
         glClearColor(0.16, 0.14, 0.10, 1.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        particles.await_compute();
-        particles.draw(projection, view);
+        fluid.await_compute();
+        fluid.draw(projection, view);
         box.draw(projection, view);
     }
 };
