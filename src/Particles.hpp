@@ -6,24 +6,20 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "Particle.hpp"
 #include "util.hpp"
+#include "gfx/object.hpp"
 
 struct Particles {
     const int num_circle_vertices = 8; // circle detail for particle rendering
     const int num_particles;
 
-    GLuint ssbo;            // particle data storage
+    gfx::Buffer ssbo{GL_SHADER_STORAGE_BUFFER}; // particle data storage
+    gfx::Buffer circle_verts{GL_ARRAY_BUFFER};
+    gfx::VAO vao;
+
     GLuint compute_program; // compute shader to operate on particles SSBO
-    GLuint vao;             // VAO for particle rendering
     GLuint program;         // program for particle rendering
 
     Particles(int num_particles) : num_particles(num_particles) {
-        create_ssbo();
-        create_vao();
-        create_compute_program();
-        create_program();
-    }
-
-    void create_ssbo() {
         std::vector<Particle> initial;
         for (int i = 0; i < num_particles; ++i) {
             initial.emplace_back(Particle{
@@ -32,13 +28,22 @@ struct Particles {
                 glm::linearRand(glm::vec4(0.0), glm::vec4(1.0))
             });
         }
+        ssbo.bind_base(0).set_data(initial);
 
-        // https://www.khronos.org/opengl/wiki/Shader_Storage_Buffer_Object
-        glGenBuffers(1, &ssbo);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-        glBufferData(GL_SHADER_STORAGE_BUFFER, initial.size() * sizeof(Particle), initial.data(), GL_STATIC_DRAW);
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); // unbind
+        // circle vertices (for triangle fan)
+        std::vector<glm::vec2> circle;
+        for (int i = 0; i < num_circle_vertices; ++i) {
+            const float f = static_cast<float>(i) / num_circle_vertices * glm::pi<float>() * 2.0;
+            circle.emplace_back(glm::vec2(glm::sin(f), glm::cos(f)));
+        }
+        circle_verts.set_data(circle);
+
+        vao.bind_attrib(circle_verts, 2, GL_FLOAT)
+           .bind_attrib(ssbo, offsetof(Particle, pos), sizeof(Particle), 3, GL_FLOAT, gfx::INSTANCED)
+           .bind_attrib(ssbo, offsetof(Particle, color), sizeof(Particle), 4, GL_FLOAT, gfx::INSTANCED);
+
+        create_compute_program();
+        create_program();
     }
 
     void create_compute_program() {
@@ -71,45 +76,6 @@ struct Particles {
         glAttachShader(compute_program, cs_id);
         glLinkProgram(compute_program);
         check_program_errors(compute_program);
-    }
-
-    void create_vao() {
-        // circle vertices (for triangle fan)
-        std::vector<glm::vec2> circle;
-        for (int i = 0; i < num_circle_vertices; ++i) {
-            const float f = static_cast<float>(i) / num_circle_vertices * glm::pi<float>() * 2.0;
-            circle.emplace_back(glm::vec2(glm::sin(f), glm::cos(f)));
-        }
-
-        glGenVertexArrays(1, &vao);
-        glBindVertexArray(vao);
-
-        // non-instanced circle geometry
-        GLuint circle_vbo;
-        glGenBuffers(1, &circle_vbo);
-
-        glEnableVertexAttribArray(0);
-        glBindVertexBuffer(0, circle_vbo, 0, sizeof(glm::vec2));
-        glVertexAttribFormat(0, glm::vec2::length(), GL_FLOAT, GL_FALSE, 0);
-
-        glBindBuffer(GL_ARRAY_BUFFER, circle_vbo);
-        glBufferData(GL_ARRAY_BUFFER, circle.size() * sizeof(glm::vec2), circle.data(), GL_STATIC_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, 0); // unbind
-
-        // instanced particle position data
-        glEnableVertexAttribArray(1);
-        glBindVertexBuffer(1, ssbo, offsetof(Particle, pos), sizeof(Particle));
-        glVertexAttribFormat(1, glm::vec3::length(), GL_FLOAT, GL_FALSE, 0);
-        // https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glVertexAttribDivisor.xhtml
-        glVertexAttribDivisor(1, 1); // one attribute value per instance
-
-        // instanced particle color data
-        glEnableVertexAttribArray(2);
-        glBindVertexBuffer(2, ssbo, offsetof(Particle, color), sizeof(Particle));
-        glVertexAttribFormat(2, glm::vec4::length(), GL_FLOAT, GL_FALSE, 0);
-        glVertexAttribDivisor(2, 1);
-
-        glBindVertexArray(0); // unbind
     }
 
     void create_program() {
@@ -172,9 +138,9 @@ struct Particles {
         glUseProgram(program);
         glUniformMatrix4fv(glGetUniformLocation(program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(glGetUniformLocation(program, "view"), 1, GL_FALSE, glm::value_ptr(view));
-        glBindVertexArray(vao);
+        vao.bind();
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, num_circle_vertices, num_particles);
-        glBindVertexArray(0);
+        vao.unbind();
         glUseProgram(0);
     }
 };
