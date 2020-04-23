@@ -25,6 +25,7 @@ struct Fluid {
     gfx::Buffer circle_verts{GL_ARRAY_BUFFER};
     gfx::VAO vao;
 
+    gfx::Program ptg_program; // particle to grid transfer shader
     gfx::Program compute_program; // compute shader to operate on particles SSBO
     gfx::Program program; // program for particle rendering
 
@@ -73,14 +74,24 @@ struct Fluid {
            .bind_attrib(particle_ssbo, offsetof(Particle, pos), sizeof(Particle), 3, GL_FLOAT, gfx::INSTANCED)
            .bind_attrib(particle_ssbo, offsetof(Particle, color), sizeof(Particle), 4, GL_FLOAT, gfx::INSTANCED);
 
-        compute_program.compute({"particles.cs.glsl"}).compile();
+        ptg_program.compute({"common.glsl", "particle_to_grid.cs.glsl"}).compile();
+        compute_program.compute({"common.glsl", "particles.cs.glsl"}).compile();
         program.vertex({"particles.vs.glsl"}).fragment({"particles.fs.glsl"}).compile();
+    }
+
+    void particle_to_grid() {
+        ptg_program.use();
+        glUniform3iv(ptg_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
+        glUniform3fv(ptg_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
+        glUniform3fv(ptg_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
+        glDispatchCompute(1, 1, 1);
+        ptg_program.disuse();
     }
 
     void dispatch_compute() {
         // https://www.khronos.org/opengl/wiki/Compute_Shader#Dispatch
         compute_program.use();
-        glDispatchCompute(particle_ssbo.length(), 1, 1);
+        // glDispatchCompute(particle_ssbo.length(), 1, 1);
         compute_program.disuse();
     }
 

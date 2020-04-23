@@ -54,7 +54,6 @@ public:
         glfwGetFramebufferSize(window, &window_w, &window_h);
 
         update_camera();
-        fluid.dispatch_compute();
 
         glViewport(0, 0, window_w, window_h);
 
@@ -73,7 +72,10 @@ public:
         glClearColor(0.16, 0.14, 0.10, 1.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        fluid.await_compute();
+        fluid.particle_to_grid();
+        // fluid.await_compute();
+        // fluid.dispatch_compute();
+        // fluid.await_compute();
         fluid.draw(projection, view);
         box.draw(projection, view);
     }
