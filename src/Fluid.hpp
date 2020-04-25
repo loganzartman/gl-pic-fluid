@@ -95,16 +95,20 @@ struct Fluid {
             return (x.x >= 0 and x.y >= 0 and x.z >= 0 and
                     x.x < grid_dimensions.x and x.y < grid_dimensions.y and x.z < grid_dimensions.z);
         };
+        
+        for (int i = 0; i < grid_ssbo.length(); ++i) {
+            grid[i].marker = GRID_AIR;
+        }
 
         for (int i = 0; i < particle_ssbo.length(); ++i) {
             const Particle& p = particles[i];
-            const glm::ivec3 grid_coord = glm::floor((p.pos - bounds_min) / bounds_max * glm::vec3(grid_dimensions));
+            const glm::ivec3 grid_coord = glm::floor((p.pos - bounds_min) / bounds_size * glm::vec3(grid_dimensions));
             if (!in_bounds(grid_coord)) {
                 continue;
             }
             const int index = grid_coord.z * grid_dimensions.x * grid_dimensions.y + 
                 grid_coord.y * grid_dimensions.x + grid_coord.x;
-            // grid[index].marker = 1;
+            grid[index].marker = GRID_FLUID;
         }
     }
 
