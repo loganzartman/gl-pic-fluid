@@ -11,9 +11,12 @@ struct Particle {
 };
 
 struct GridCell {
+    vec3 pos;
+    int pad0;
     vec3 v;
-    float pad0;
+    int pad1;
     int marker;
+    int[3] pad2;
 };
 
 layout(std430, binding=0) restrict buffer ParticleBlock {

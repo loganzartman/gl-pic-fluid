@@ -14,7 +14,8 @@ struct Fluid {
     const int num_circle_vertices = 8; // circle detail for particle rendering
 
     const int particle_density = 8;
-    const glm::ivec3 grid_dimensions{64, 64, 64};
+    const int grid_size = 32;
+    const glm::ivec3 grid_dimensions{grid_size, grid_size, grid_size};
     const glm::vec3 bounds_min{-1, -1, -1};
     const glm::vec3 bounds_max{1, 1, 1};
     const glm::vec3 bounds_size = bounds_max - bounds_min;
@@ -24,9 +25,11 @@ struct Fluid {
     gfx::Buffer grid_ssbo{GL_SHADER_STORAGE_BUFFER}; // grid data storage
     gfx::Buffer circle_verts{GL_ARRAY_BUFFER};
     gfx::VAO vao;
+    gfx::VAO grid_vao;
 
     gfx::Program particle_update_program; // compute shader to operate on particles SSBO
     gfx::Program program; // program for particle rendering
+    gfx::Program grid_program;
 
     Fluid() {
         std::vector<GridCell> initial_grid;
@@ -35,20 +38,22 @@ struct Fluid {
             for (int gy = 0; gy < grid_dimensions.y; ++gy) {
                 for (int gx = 0; gx < grid_dimensions.x; ++gx) {
                     const glm::ivec3 gpos{gx, gy, gz};
+                    const glm::vec3 cell_pos = bounds_min + bounds_size * glm::vec3(gpos) / glm::vec3(grid_dimensions);
 
                     if (gy < grid_dimensions.y * 2 / 3 && gx < grid_dimensions.x / 3) {
                         initial_grid.emplace_back(GridCell{
+                            cell_pos,
                             glm::vec3(0),
                             GRID_FLUID
                         });
-                        const glm::vec3 cell_pos = bounds_min + bounds_size * glm::vec3(gpos) / glm::vec3(grid_dimensions);
                         initial_particles.emplace_back(Particle{
                             glm::linearRand(cell_pos, cell_pos + cell_size),
                             glm::ballRand(0.001),
-                            glm::vec4(0.12,0.57,0.89,0.25)
+                            glm::vec4(0.12,0.57,0.89,1.0)
                         });
                     } else {
                         initial_grid.emplace_back(GridCell{
+                            cell_pos,
                             glm::vec3(0),
                             GRID_AIR
                         });
@@ -72,15 +77,34 @@ struct Fluid {
         vao.bind_attrib(circle_verts, 2, GL_FLOAT)
            .bind_attrib(particle_ssbo, offsetof(Particle, pos), sizeof(Particle), 3, GL_FLOAT, gfx::INSTANCED)
            .bind_attrib(particle_ssbo, offsetof(Particle, color), sizeof(Particle), 4, GL_FLOAT, gfx::INSTANCED);
+        
+        grid_vao.bind_attrib(grid_ssbo, offsetof(GridCell, pos), sizeof(GridCell), 3, GL_FLOAT, gfx::NOT_INSTANCED)
+                .bind_attrib(grid_ssbo, offsetof(GridCell, v), sizeof(GridCell), 3, GL_FLOAT, gfx::NOT_INSTANCED)
+                .bind_attrib(grid_ssbo, offsetof(GridCell, marker), sizeof(GridCell), 1, GL_INT, gfx::NOT_INSTANCED);
 
         particle_update_program.compute({"common.glsl", "particle_update.cs.glsl"}).compile();
         program.vertex({"particles.vs.glsl"}).fragment({"particles.fs.glsl"}).compile();
+        grid_program.vertex({"common.glsl", "grid.vs.glsl"}).fragment({"grid.fs.glsl"}).compile();
     }
 
     void particle_to_grid() {
-        auto particles = particle_ssbo.map_buffer<Particle>();
+        const auto particles = particle_ssbo.map_buffer<Particle>();
+        auto grid = grid_ssbo.map_buffer<GridCell>();
+
+        auto in_bounds = [&](const glm::ivec3& x){
+            return (x.x >= 0 and x.y >= 0 and x.z >= 0 and
+                    x.x < grid_dimensions.x and x.y < grid_dimensions.y and x.z < grid_dimensions.z);
+        };
+
         for (int i = 0; i < particle_ssbo.length(); ++i) {
-            particles[i].pos.x = 0;
+            const Particle& p = particles[i];
+            const glm::ivec3 grid_coord = glm::floor((p.pos - bounds_min) / bounds_max * glm::vec3(grid_dimensions));
+            if (!in_bounds(grid_coord)) {
+                continue;
+            }
+            const int index = grid_coord.z * grid_dimensions.x * grid_dimensions.y + 
+                grid_coord.y * grid_dimensions.x + grid_coord.x;
+            // grid[index].marker = 1;
         }
     }
 
@@ -97,6 +121,7 @@ struct Fluid {
 
     void draw(const glm::mat4& projection, const glm::mat4& view) {
         ssbo_barrier();
+
         program.use();
         glUniformMatrix4fv(program.uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(program.uniform_loc("view"), 1, GL_FALSE, glm::value_ptr(view));
@@ -109,5 +134,16 @@ struct Fluid {
         glDisable(GL_DEPTH_TEST);
         vao.unbind();
         program.disuse();
+
+        grid_program.use();
+        glUniformMatrix4fv(grid_program.uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(projection));
+        glUniformMatrix4fv(grid_program.uniform_loc("view"), 1, GL_FALSE, glm::value_ptr(view));
+        grid_vao.bind();
+        glEnable(GL_DEPTH_TEST);
+        glPointSize(5.0);
+        glDrawArrays(GL_POINTS, 0, grid_ssbo.length());
+        glDisable(GL_DEPTH_TEST);
+        grid_vao.unbind();
+        grid_program.disuse();
     }
 };
