@@ -78,6 +78,10 @@ struct Fluid {
     }
 
     void particle_to_grid() {
+        auto particles = particle_ssbo.map_buffer<Particle>();
+        for (int i = 0; i < particle_ssbo.length(); ++i) {
+            particles[i].pos.x = 0;
+        }
     }
 
     void particle_update() {

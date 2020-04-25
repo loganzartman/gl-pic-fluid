@@ -56,24 +56,33 @@ public:
     } 
 
 private:
+    struct GlMappedBufferDeleter {
+        GLenum target;
+        GLuint id;
+        void operator()(void* ptr) {
+            glBindBuffer(target, id);
+            glUnmapBuffer(target);
+            glBindBuffer(target, 0);
+        }
+    };
+
     template <typename T>
-    std::unique_ptr<T[]> unsafe_map_buffer(GLenum access) const {
+    std::unique_ptr<T[], GlMappedBufferDeleter> unsafe_map_buffer(GLenum access) const {
         bind();
-        const auto deleter = [&](T*){glUnmapBuffer(target);};
-        const std::unique_ptr<T[], decltype(deleter)> ptr{glMapBuffer(target, access)};
+        std::unique_ptr<T[], GlMappedBufferDeleter> ptr(static_cast<T*>(glMapBuffer(target, access)), GlMappedBufferDeleter{target, id});
         unbind();
         return std::move(ptr);
     }
 
 public:
     template <typename T>
-    std::unique_ptr<T[]> map_buffer() {
+    std::unique_ptr<T[], GlMappedBufferDeleter> map_buffer() {
         return unsafe_map_buffer<T>(GL_READ_WRITE);
     }
 
     template <typename T>
-    std::unique_ptr<const T[]> map_buffer() const {
-        return const_cast<std::unique_ptr<const T[]>>(unsafe_map_buffer<T>(GL_READ_ONLY));
+    std::unique_ptr<const T[], GlMappedBufferDeleter> map_buffer() const {
+        return const_cast<std::unique_ptr<const T[], GlMappedBufferDeleter>>(unsafe_map_buffer<T>(GL_READ_ONLY));
     }
 };
 
