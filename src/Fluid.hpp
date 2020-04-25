@@ -14,7 +14,7 @@ struct Fluid {
     const int num_circle_vertices = 8; // circle detail for particle rendering
 
     const int particle_density = 8;
-    const int grid_size = 32;
+    const int grid_size = 16;
     const glm::ivec3 grid_dimensions{grid_size, grid_size, grid_size};
     const glm::vec3 bounds_min{-1, -1, -1};
     const glm::vec3 bounds_max{1, 1, 1};
@@ -46,11 +46,13 @@ struct Fluid {
                             glm::vec3(0),
                             GRID_FLUID
                         });
-                        initial_particles.emplace_back(Particle{
-                            glm::linearRand(cell_pos, cell_pos + cell_size),
-                            glm::ballRand(0.001),
-                            glm::vec4(0.12,0.57,0.89,1.0)
-                        });
+                        for (int i = 0; i < particle_density; ++i) {
+                            initial_particles.emplace_back(Particle{
+                                glm::linearRand(cell_pos, cell_pos + cell_size),
+                                glm::ballRand(0.001),
+                                glm::vec4(0.12,0.57,0.89,1.0)
+                            });
+                        }
                     } else {
                         initial_grid.emplace_back(GridCell{
                             cell_pos,
