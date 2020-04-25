@@ -89,6 +89,11 @@ public:
         glUseProgram(id); 
     }
 
+    void validate() {
+        glValidateProgram(id);
+        check_validation(id);
+    }
+
     void disuse() {
         glUseProgram(0);
     }
@@ -113,6 +118,22 @@ private:
         return result.str();
     }
 
+    void check_validation(GLuint shader) {
+        GLint is_ok = 0;
+        glGetProgramiv(id, GL_VALIDATE_STATUS, &is_ok);
+        if (!is_ok) {
+			GLint max_length = 0;
+            glGetProgramiv(id, GL_INFO_LOG_LENGTH, &max_length);
+
+            // The maxLength includes the NULL character
+            std::vector<GLchar> info_log(max_length);
+            glGetProgramInfoLog(id, max_length, NULL, &info_log[0]);
+
+            const std::string err = "GLSL validation error for program: ";
+            throw std::runtime_error(err + name + "\n" + info_log.data());
+		}
+    }
+
     void check_shader_errors(GLuint shader) {
         GLint is_ok = 0;
         glGetShaderiv(shader, GL_COMPILE_STATUS, &is_ok);
@@ -126,7 +147,7 @@ private:
 
             // The program is useless now. So delete it.
             glDeleteProgram(shader);
-            const std::string err = "GLSL error: \n";
+            const std::string err = "GL Program Validation error: \n";
             throw std::runtime_error(err + info_log.data());
 		}
     }

@@ -1,5 +1,6 @@
 #pragma once
 #include <initializer_list>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <unordered_map>
@@ -24,19 +25,19 @@ public:
         glDeleteBuffers(1, &id);
     }
 
-    void bind() {
+    void bind() const {
         glBindBuffer(target, id);
     }
     
-    void unbind() {
+    void unbind() const {
         glBindBuffer(target, 0);
     }
 
-    int size() {
+    int size() const {
         return _size;
     }
 
-    int length() {
+    int length() const {
         return _length;
     }
     
@@ -53,6 +54,27 @@ public:
         _length = data.size();
         _size = data.size() * sizeof(T);
     } 
+
+private:
+    template <typename T>
+    std::unique_ptr<T[]> unsafe_map_buffer(GLenum access) const {
+        bind();
+        const auto deleter = [&](T*){glUnmapBuffer(target);};
+        const std::unique_ptr<T[], decltype(deleter)> ptr{glMapBuffer(target, access)};
+        unbind();
+        return std::move(ptr);
+    }
+
+public:
+    template <typename T>
+    std::unique_ptr<T[]> map_buffer() {
+        return unsafe_map_buffer<T>(GL_READ_WRITE);
+    }
+
+    template <typename T>
+    std::unique_ptr<const T[]> map_buffer() const {
+        return const_cast<std::unique_ptr<const T[]>>(unsafe_map_buffer<T>(GL_READ_ONLY));
+    }
 };
 
 class VAO {
@@ -83,11 +105,11 @@ public:
         glDeleteVertexArrays(1, &id);
     }
 
-    void bind() {
+    void bind() const {
         glBindVertexArray(id);
     }
 
-    void unbind() {
+    void unbind() const {
         glBindVertexArray(0);
     }
 

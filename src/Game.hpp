@@ -73,9 +73,7 @@ public:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         fluid.particle_to_grid();
-        // fluid.await_compute();
-        // fluid.dispatch_compute();
-        // fluid.await_compute();
+        fluid.particle_update();
         fluid.draw(projection, view);
         box.draw(projection, view);
     }

@@ -25,8 +25,7 @@ struct Fluid {
     gfx::Buffer circle_verts{GL_ARRAY_BUFFER};
     gfx::VAO vao;
 
-    gfx::Program ptg_program; // particle to grid transfer shader
-    gfx::Program compute_program; // compute shader to operate on particles SSBO
+    gfx::Program particle_update_program; // compute shader to operate on particles SSBO
     gfx::Program program; // program for particle rendering
 
     Fluid() {
@@ -45,7 +44,7 @@ struct Fluid {
                         const glm::vec3 cell_pos = bounds_min + bounds_size * glm::vec3(gpos) / glm::vec3(grid_dimensions);
                         initial_particles.emplace_back(Particle{
                             glm::linearRand(cell_pos, cell_pos + cell_size),
-                            glm::vec3(0),
+                            glm::ballRand(0.001),
                             glm::vec4(0.12,0.57,0.89,0.25)
                         });
                     } else {
@@ -74,33 +73,26 @@ struct Fluid {
            .bind_attrib(particle_ssbo, offsetof(Particle, pos), sizeof(Particle), 3, GL_FLOAT, gfx::INSTANCED)
            .bind_attrib(particle_ssbo, offsetof(Particle, color), sizeof(Particle), 4, GL_FLOAT, gfx::INSTANCED);
 
-        ptg_program.compute({"common.glsl", "particle_to_grid.cs.glsl"}).compile();
-        compute_program.compute({"common.glsl", "particles.cs.glsl"}).compile();
+        particle_update_program.compute({"common.glsl", "particle_update.cs.glsl"}).compile();
         program.vertex({"particles.vs.glsl"}).fragment({"particles.fs.glsl"}).compile();
     }
 
     void particle_to_grid() {
-        ptg_program.use();
-        glUniform3iv(ptg_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
-        glUniform3fv(ptg_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
-        glUniform3fv(ptg_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
-        glDispatchCompute(1, 1, 1);
-        ptg_program.disuse();
     }
 
-    void dispatch_compute() {
-        // https://www.khronos.org/opengl/wiki/Compute_Shader#Dispatch
-        compute_program.use();
-        // glDispatchCompute(particle_ssbo.length(), 1, 1);
-        compute_program.disuse();
+    void particle_update() {
+        particle_update_program.use();
+        glDispatchCompute(particle_ssbo.length(), 1, 1);
+        particle_update_program.disuse();
     }
 
-    void await_compute() {
+    void ssbo_barrier() {
         // https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
     }
 
     void draw(const glm::mat4& projection, const glm::mat4& view) {
+        ssbo_barrier();
         program.use();
         glUniformMatrix4fv(program.uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(program.uniform_loc("view"), 1, GL_FALSE, glm::value_ptr(view));

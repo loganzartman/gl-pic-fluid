@@ -16,11 +16,11 @@ struct GridCell {
     int marker;
 };
 
-layout(std430, binding=0) volatile buffer ParticleBlock {
+layout(std430, binding=0) restrict buffer ParticleBlock {
     Particle particle[];
 };
 
-layout(std430, binding=1) volatile buffer GridBlock {
+layout(std430, binding=1) restrict buffer GridBlock {
     GridCell cell[];
 };
 
