@@ -3,20 +3,15 @@ int SOLID = 1;
 int FLUID = 2;
 
 struct Particle {
-    vec3 pos;
-    float pad0;
-    vec3 vel;
-    float pad1;
     vec4 color;
+    vec3 pos;
+    vec3 vel;
 };
 
 struct GridCell {
     vec3 pos;
-    int pad0;
-    vec3 v;
-    int pad1;
     int marker;
-    int[3] pad2;
+    vec3 v;
 };
 
 layout(std430, binding=0) restrict buffer ParticleBlock {
