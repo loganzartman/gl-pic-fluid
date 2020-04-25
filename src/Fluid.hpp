@@ -123,9 +123,7 @@ struct Fluid {
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
     }
 
-    void draw(const glm::mat4& projection, const glm::mat4& view) {
-        ssbo_barrier();
-
+    void draw_particles(const glm::mat4& projection, const glm::mat4& view) {
         program.use();
         glUniformMatrix4fv(program.uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(program.uniform_loc("view"), 1, GL_FALSE, glm::value_ptr(view));
@@ -138,7 +136,9 @@ struct Fluid {
         glDisable(GL_DEPTH_TEST);
         vao.unbind();
         program.disuse();
+    }
 
+    void draw_grid(const glm::mat4& projection, const glm::mat4& view) {
         grid_program.use();
         glUniformMatrix4fv(grid_program.uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(grid_program.uniform_loc("view"), 1, GL_FALSE, glm::value_ptr(view));

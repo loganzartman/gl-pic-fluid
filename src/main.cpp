@@ -36,6 +36,15 @@ MessageCallback(GLenum source,
 }
 
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    Game* game = static_cast<Game*>(glfwGetWindowUserPointer(window));
+    if (action == GLFW_PRESS) {
+        if (key == GLFW_KEY_P) {
+            game->particles_visible = !game->particles_visible;
+        }
+        if (key == GLFW_KEY_G) {
+            game->grid_visible = !game->grid_visible;
+        }
+    }
 }
 
 void MousePosCallback(GLFWwindow* window, double mouse_x, double mouse_y) {

@@ -30,6 +30,9 @@ public:
     float camera_pitch = 0;
 
     Fluid fluid;
+    bool grid_visible = true;
+    bool particles_visible = true;
+
     Box box;    
 
     Game(GLFWwindow* window) : window(window) {}
@@ -74,7 +77,11 @@ public:
 
         fluid.particle_to_grid();
         fluid.particle_update();
-        fluid.draw(projection, view);
+        fluid.ssbo_barrier();
+        if (grid_visible)
+            fluid.draw_grid(projection, view);
+        if (particles_visible)
+            fluid.draw_particles(projection, view);
         box.draw(projection, view);
     }
 };
