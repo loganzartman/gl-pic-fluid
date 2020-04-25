@@ -82,7 +82,7 @@ public:
     }
 
     template <typename T>
-    std::unique_ptr<const T[], GlMappedBufferDeleter> map_buffer() const {
+    const std::unique_ptr<T[], GlMappedBufferDeleter> map_buffer() const {
         return const_cast<std::unique_ptr<const T[], GlMappedBufferDeleter>>(unsafe_map_buffer<T>(GL_READ_ONLY));
     }
 };
