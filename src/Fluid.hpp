@@ -81,7 +81,7 @@ struct Fluid {
            .bind_attrib(particle_ssbo, offsetof(Particle, color), sizeof(Particle), 4, GL_FLOAT, gfx::INSTANCED);
         
         grid_vao.bind_attrib(grid_ssbo, offsetof(GridCell, pos), sizeof(GridCell), 3, GL_FLOAT, gfx::NOT_INSTANCED)
-                .bind_attrib(grid_ssbo, offsetof(GridCell, v), sizeof(GridCell), 3, GL_FLOAT, gfx::NOT_INSTANCED)
+                .bind_attrib(grid_ssbo, offsetof(GridCell, vel), sizeof(GridCell), 3, GL_FLOAT, gfx::NOT_INSTANCED)
                 .bind_attrib(grid_ssbo, offsetof(GridCell, marker), sizeof(GridCell), 1, GL_INT, gfx::NOT_INSTANCED);
 
         particle_update_program.compute({"common.glsl", "particle_update.cs.glsl"}).compile();
@@ -100,8 +100,10 @@ struct Fluid {
         
         for (int i = 0; i < grid_ssbo.length(); ++i) {
             grid[i].marker = GRID_AIR;
+            grid[i].vel = glm::vec3(0);
         }
 
+        std::unordered_map<int, uint> particle_counts;
         for (int i = 0; i < particle_ssbo.length(); ++i) {
             const Particle& p = particles[i];
             const glm::ivec3 grid_coord = glm::floor((p.pos - bounds_min) / bounds_size * glm::vec3(grid_dimensions));
@@ -111,6 +113,12 @@ struct Fluid {
             const int index = grid_coord.z * grid_dimensions.x * grid_dimensions.y + 
                 grid_coord.y * grid_dimensions.x + grid_coord.x;
             grid[index].marker = GRID_FLUID;
+            grid[index].vel += p.vel;
+            particle_counts[index] += 1;
+        }
+
+        for (int i = 0; i < grid_ssbo.length(); ++i) {
+            grid[i].vel *= 1.0 / particle_counts[i];
         }
     }
 
