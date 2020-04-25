@@ -8,5 +8,8 @@ uniform mat4 view;
 
 void main() {
     gl_Position = projection * view * vec4(pos, 1.0);    
-    vs_color = vec4(marker, marker % 2, log(marker) / 10, 1.0);
+    if (marker == AIR) {vs_color = vec4(0.5, 0.5, 0.5, 0.5);}
+    if (marker == SOLID) {vs_color = vec4(0.0, 1.0, 0.0, 1.0);}
+    if (marker == FLUID) {vs_color = vec4(0.0, 0.0, 1.0, 1.0);}
+    else {vs_color = vec4(1.0, 0, 0, 0.5);}
 }

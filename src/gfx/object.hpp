@@ -4,6 +4,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <glad/glad.h>
 
@@ -99,6 +100,14 @@ class VAO {
         {GL_DOUBLE, 8},
         {GL_FIXED, 4}
     }};
+    const std::unordered_set<GLenum> integer_types{
+        GL_BYTE,
+        GL_UNSIGNED_BYTE,
+        GL_SHORT,
+        GL_UNSIGNED_SHORT,
+        GL_INT,
+        GL_UNSIGNED_INT
+    };
     int auto_attrib_counter = 0;
 
 public:
@@ -152,13 +161,17 @@ public:
             stride // stride
         );
         
-        glVertexAttribFormat(
-            i, // attribute index
-            num_components, // size (number of components)
-            type, // type of components
-            GL_FALSE, // normalize integer type?
-            0 // "added to the buffer binding's offset to get the offset for this attribute"
-        );
+        if (integer_types.count(type)) {
+            glVertexAttribIFormat(i, num_components, type, 0);
+        } else {
+            glVertexAttribFormat(
+                i, // attribute index
+                num_components, // size (number of components)
+                type, // type of components
+                GL_FALSE, // normalize integer type?
+                0 // "added to the buffer binding's offset to get the offset for this attribute"
+            );
+        }
 
         glVertexBindingDivisor(i, divisor);
         ++auto_attrib_counter;
