@@ -28,6 +28,7 @@ struct Fluid {
     gfx::VAO grid_vao;
 
     gfx::Program particle_update_program; // compute shader to operate on particles SSBO
+    gfx::Program grid_to_particle_program;
     gfx::Program program; // program for particle rendering
     gfx::Program grid_program;
 
@@ -78,12 +79,14 @@ struct Fluid {
 
         vao.bind_attrib(circle_verts, 2, GL_FLOAT)
            .bind_attrib(particle_ssbo, offsetof(Particle, pos), sizeof(Particle), 3, GL_FLOAT, gfx::INSTANCED)
+           .bind_attrib(particle_ssbo, offsetof(Particle, vel), sizeof(Particle), 3, GL_FLOAT, gfx::INSTANCED)
            .bind_attrib(particle_ssbo, offsetof(Particle, color), sizeof(Particle), 4, GL_FLOAT, gfx::INSTANCED);
         
         grid_vao.bind_attrib(grid_ssbo, offsetof(GridCell, pos), sizeof(GridCell), 3, GL_FLOAT, gfx::NOT_INSTANCED)
                 .bind_attrib(grid_ssbo, offsetof(GridCell, vel), sizeof(GridCell), 3, GL_FLOAT, gfx::NOT_INSTANCED)
                 .bind_attrib(grid_ssbo, offsetof(GridCell, marker), sizeof(GridCell), 1, GL_INT, gfx::NOT_INSTANCED);
 
+        grid_to_particle_program.compute({"common.glsl", "grid_to_particle.cs.glsl"}).compile();
         particle_update_program.compute({"common.glsl", "particle_update.cs.glsl"}).compile();
         program.vertex({"particles.vs.glsl"}).fragment({"particles.fs.glsl"}).compile();
         grid_program.vertex({"common.glsl", "grid.vs.glsl"}).fragment({"grid.fs.glsl"}).compile();
@@ -122,7 +125,19 @@ struct Fluid {
         }
     }
 
+    void grid_to_particle() {
+        ssbo_barrier();
+        grid_to_particle_program.use();
+        glUniform3fv(grid_to_particle_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
+        glUniform3fv(grid_to_particle_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
+        glUniform3iv(grid_to_particle_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
+        grid_to_particle_program.validate();
+        glDispatchCompute(particle_ssbo.length(), 1, 1);
+        grid_to_particle_program.disuse();
+    }
+
     void particle_update() {
+        ssbo_barrier();
         particle_update_program.use();
         glDispatchCompute(particle_ssbo.length(), 1, 1);
         particle_update_program.disuse();

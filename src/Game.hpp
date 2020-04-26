@@ -65,7 +65,7 @@ public:
         const glm::mat4 projection = glm::perspective(glm::radians(30.f), aspect_ratio, 0.1f, 100.f);
 
         // view matrix (orbit camera) 
-        glm::vec3 eye(0, 0, 5);
+        glm::vec3 eye(0, 0, 6);
         eye = glm::rotate(eye, camera_yaw, glm::vec3(0, 1, 0));
         eye = glm::rotate(eye, camera_pitch, glm::cross(glm::vec3(0, 1, 0), eye));
         const glm::mat4 view = glm::lookAt(eye, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
@@ -76,6 +76,7 @@ public:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         fluid.particle_to_grid();
+        fluid.grid_to_particle();
         fluid.particle_update();
         fluid.ssbo_barrier();
         if (grid_visible)
