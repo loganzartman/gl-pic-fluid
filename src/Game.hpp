@@ -71,9 +71,11 @@ public:
         const glm::mat4 view = glm::lookAt(eye, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 
         // clear screen
-        glEnable(GL_DEPTH_TEST);
         glClearColor(0.16, 0.14, 0.10, 1.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glEnable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
 
         fluid.particle_to_grid();
         fluid.grid_to_particle();

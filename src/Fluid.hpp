@@ -153,12 +153,7 @@ struct Fluid {
         glUniformMatrix4fv(program.uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(program.uniform_loc("view"), 1, GL_FALSE, glm::value_ptr(view));
         vao.bind();
-        glEnable(GL_DEPTH_TEST);
-        glEnable(GL_BLEND);
-        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, num_circle_vertices, particle_ssbo.length());
-        glDisable(GL_BLEND);
-        glDisable(GL_DEPTH_TEST);
         vao.unbind();
         program.disuse();
     }
@@ -168,10 +163,8 @@ struct Fluid {
         glUniformMatrix4fv(grid_program.uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(grid_program.uniform_loc("view"), 1, GL_FALSE, glm::value_ptr(view));
         grid_vao.bind();
-        glEnable(GL_DEPTH_TEST);
         glPointSize(5.0);
         glDrawArrays(GL_POINTS, 0, grid_ssbo.length());
-        glDisable(GL_DEPTH_TEST);
         grid_vao.unbind();
         grid_program.disuse();
     }
