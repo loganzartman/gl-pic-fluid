@@ -30,7 +30,7 @@ public:
     float camera_pitch = 0;
 
     Fluid fluid;
-    bool grid_visible = true;
+    bool grid_visible = false;
     bool particles_visible = true;
 
     Box box;    
@@ -70,7 +70,6 @@ public:
         eye = glm::rotate(eye, camera_yaw, glm::vec3(0, 1, 0));
         eye = glm::rotate(eye, camera_pitch, glm::cross(glm::vec3(0, 1, 0), eye));
         const glm::mat4 view = glm::lookAt(eye, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
-        const glm::vec3 look = glm::normalize(-eye);
 
         // clear screen
         glClearColor(0.16, 0.14, 0.10, 1.0);
@@ -86,7 +85,7 @@ public:
         if (grid_visible)
             fluid.draw_grid(projection, view);
         if (particles_visible)
-            fluid.draw_particles(projection, view, viewport, look);
-        box.draw(projection, view);
+            fluid.draw_particles(projection, view, viewport);
+        box.draw(projection, view, eye);
     }
 };
