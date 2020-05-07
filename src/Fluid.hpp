@@ -148,10 +148,12 @@ struct Fluid {
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
     }
 
-    void draw_particles(const glm::mat4& projection, const glm::mat4& view) {
+    void draw_particles(const glm::mat4& projection, const glm::mat4& view, const glm::vec4& viewport, const glm::vec3& look) {
         program.use();
         glUniformMatrix4fv(program.uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(program.uniform_loc("view"), 1, GL_FALSE, glm::value_ptr(view));
+        glUniform4fv(program.uniform_loc("viewport"), 1, glm::value_ptr(viewport));
+        glUniform3fv(program.uniform_loc("look"), 1, glm::value_ptr(look));
         vao.bind();
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, num_circle_vertices, particle_ssbo.length());
         vao.unbind();

@@ -58,6 +58,7 @@ public:
 
         update_camera();
 
+        const glm::vec4 viewport(0, 0, window_w, window_h);
         glViewport(0, 0, window_w, window_h);
 
         // projection matrix
@@ -69,6 +70,7 @@ public:
         eye = glm::rotate(eye, camera_yaw, glm::vec3(0, 1, 0));
         eye = glm::rotate(eye, camera_pitch, glm::cross(glm::vec3(0, 1, 0), eye));
         const glm::mat4 view = glm::lookAt(eye, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+        const glm::vec3 look = glm::normalize(-eye);
 
         // clear screen
         glClearColor(0.16, 0.14, 0.10, 1.0);
@@ -84,7 +86,7 @@ public:
         if (grid_visible)
             fluid.draw_grid(projection, view);
         if (particles_visible)
-            fluid.draw_particles(projection, view);
+            fluid.draw_particles(projection, view, viewport, look);
         box.draw(projection, view);
     }
 };
