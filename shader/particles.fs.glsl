@@ -8,6 +8,8 @@ uniform vec4 viewport;
 uniform mat4 projection;
 uniform mat4 view;
 
+const bool shaded = true;
+
 // adapted from https://gist.github.com/wwwtyro/beecc31d65d1004f5a9d
 vec3 ray_sphere_normal(vec3 r0, vec3 rd, vec3 s0, float sr) {
     // - r0: ray origin
@@ -36,14 +38,16 @@ vec3 eye_pos() {
     ndcPos.w = 1.0;
 
     vec4 clipPos = ndcPos / gl_FragCoord.w;
-    return (inverse(view) * inverse(projection) * clipPos).xyz;
+    return (inverse(projection * view) * clipPos).xyz;
 }
 
 void main() {
-    vec3 eye = eye_pos();
-    vec3 normal = ray_sphere_normal(eye, look, vs_particle_pos, vs_particle_radius); 
-    vec3 light_dir = normalize((projection * view * vec4(0, 1, 0, 1)).xyz);
-    float light_intensity = max(0, dot(vec3(0, 1, 0), normal)) * 0.5 + 0.5;
-    // frag_color = vec4(normal, 1);
-    frag_color = vec4(color.rgb * light_intensity, color.a);
+    if (shaded) {
+        vec3 eye = eye_pos();
+        vec3 normal = ray_sphere_normal(eye, look, vs_particle_pos, vs_particle_radius); 
+        frag_color = vec4(shade(vs_particle_pos, normalize(look), normal, color.rgb * 0.3, color.rgb * 0.5, vec3(0.3), 8), color.a);
+    }
+    else {
+        frag_color = color;
+    }
 }

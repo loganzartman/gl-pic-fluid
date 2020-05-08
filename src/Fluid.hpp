@@ -11,10 +11,10 @@
 #include "gfx/program.hpp"
 
 struct Fluid {
-    const int num_circle_vertices = 8; // circle detail for particle rendering
+    const int num_circle_vertices = 16; // circle detail for particle rendering
 
     const int particle_density = 8;
-    const int grid_size = 16;
+    const int grid_size = 24;
     const glm::ivec3 grid_dimensions{grid_size, grid_size, grid_size};
     const glm::vec3 bounds_min{-1, -1, -1};
     const glm::vec3 bounds_max{1, 1, 1};
@@ -51,7 +51,7 @@ struct Fluid {
                             initial_particles.emplace_back(Particle{
                                 glm::linearRand(cell_pos, cell_pos + cell_size),
                                 glm::ballRand(0.001),
-                                glm::vec4(0.12,0.57,0.89,1.0)
+                                glm::vec4(0.32,0.57,0.79,1.0)
                             });
                         }
                     } else {
@@ -88,7 +88,7 @@ struct Fluid {
 
         grid_to_particle_program.compute({"common.glsl", "grid_to_particle.cs.glsl"}).compile();
         particle_update_program.compute({"common.glsl", "particle_update.cs.glsl"}).compile();
-        program.vertex({"particles.vs.glsl"}).fragment({"particles.fs.glsl"}).compile();
+        program.vertex({"particles.vs.glsl"}).fragment({"lighting.glsl", "particles.fs.glsl"}).compile();
         grid_program.vertex({"common.glsl", "grid.vs.glsl"}).fragment({"grid.fs.glsl"}).compile();
     }
 
