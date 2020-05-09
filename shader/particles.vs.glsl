@@ -9,7 +9,7 @@ out float vs_particle_radius;
 uniform mat4 projection;
 uniform mat4 view;
 
-const int display_mode = 0;
+const int display_mode = 1;
 
 void main() {
     const float radius = 0.015;

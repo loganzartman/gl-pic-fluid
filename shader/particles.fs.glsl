@@ -8,7 +8,7 @@ uniform vec4 viewport;
 uniform mat4 projection;
 uniform mat4 view;
 
-const bool shaded = true;
+const bool shaded = false;
 
 // adapted from https://gist.github.com/wwwtyro/beecc31d65d1004f5a9d
 vec3 ray_sphere_normal(vec3 r0, vec3 rd, vec3 s0, float sr) {
