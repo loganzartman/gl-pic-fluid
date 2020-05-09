@@ -78,9 +78,7 @@ public:
         glEnable(GL_BLEND);
         glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
 
-        fluid.particle_to_grid();
-        fluid.grid_to_particle();
-        fluid.particle_advect();
+        fluid.step();
         fluid.ssbo_barrier();
         if (grid_visible)
             fluid.draw_grid(projection, view);
