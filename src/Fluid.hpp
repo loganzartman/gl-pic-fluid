@@ -27,7 +27,7 @@ struct Fluid {
     gfx::VAO vao;
     gfx::VAO grid_vao;
 
-    gfx::Program particle_update_program; // compute shader to operate on particles SSBO
+    gfx::Program particle_advect_program; // compute shader to operate on particles SSBO
     gfx::Program grid_to_particle_program;
     gfx::Program program; // program for particle rendering
     gfx::Program grid_program;
@@ -50,7 +50,7 @@ struct Fluid {
                         for (int i = 0; i < particle_density; ++i) {
                             initial_particles.emplace_back(Particle{
                                 glm::linearRand(cell_pos, cell_pos + cell_size),
-                                glm::ballRand(0.001),
+                                glm::vec3(0),
                                 glm::vec4(0.32,0.57,0.79,1.0)
                             });
                         }
@@ -87,7 +87,7 @@ struct Fluid {
                 .bind_attrib(grid_ssbo, offsetof(GridCell, marker), sizeof(GridCell), 1, GL_INT, gfx::NOT_INSTANCED);
 
         grid_to_particle_program.compute({"common.glsl", "grid_to_particle.cs.glsl"}).compile();
-        particle_update_program.compute({"common.glsl", "particle_update.cs.glsl"}).compile();
+        particle_advect_program.compute({"common.glsl", "particle_advect.cs.glsl"}).compile();
         program.vertex({"particles.vs.glsl"}).fragment({"lighting.glsl", "particles.fs.glsl"}).compile();
         grid_program.vertex({"common.glsl", "grid.vs.glsl"}).fragment({"grid.fs.glsl"}).compile();
     }
@@ -136,11 +136,11 @@ struct Fluid {
         grid_to_particle_program.disuse();
     }
 
-    void particle_update() {
+    void particle_advect() {
         ssbo_barrier();
-        particle_update_program.use();
+        particle_advect_program.use();
         glDispatchCompute(particle_ssbo.length(), 1, 1);
-        particle_update_program.disuse();
+        particle_advect_program.disuse();
     }
 
     void ssbo_barrier() {

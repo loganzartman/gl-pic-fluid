@@ -80,7 +80,7 @@ public:
 
         fluid.particle_to_grid();
         fluid.grid_to_particle();
-        fluid.particle_update();
+        fluid.particle_advect();
         fluid.ssbo_barrier();
         if (grid_visible)
             fluid.draw_grid(projection, view);
