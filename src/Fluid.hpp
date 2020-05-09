@@ -149,6 +149,8 @@ struct Fluid {
     void particle_advect() {
         ssbo_barrier();
         particle_advect_program.use();
+        glUniform3fv(particle_advect_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
+        glUniform3fv(particle_advect_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
         glDispatchCompute(particle_ssbo.length(), 1, 1);
         particle_advect_program.disuse();
     }
