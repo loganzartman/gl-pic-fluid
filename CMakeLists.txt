@@ -10,8 +10,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(LIBS glad glfw glm)
 add_executable(fluid)
 add_subdirectory(src)
+target_link_libraries(fluid ${LIBS})
+
+# googletest and tests
+add_subdirectory(googletest)
+add_executable(fluid_tests test/fluid_tests.cpp)
+target_link_libraries(fluid_tests ${LIBS} gtest gtest_main)
 
 # copy shaders to bin
 add_custom_target(copy-shader-files ALL
@@ -19,15 +26,12 @@ add_custom_target(copy-shader-files ALL
 
 # add glm
 add_subdirectory(glm)
-target_link_libraries(fluid glm)
 
 # add glad
 add_subdirectory(glad)
-target_link_libraries(fluid glad)
 
 # add glfw
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(glfw)
-target_link_libraries(fluid glfw)
