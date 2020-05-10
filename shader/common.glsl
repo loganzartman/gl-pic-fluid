@@ -22,11 +22,30 @@ layout(std430, binding=1) restrict buffer GridBlock {
     GridCell cell[];
 };
 
-int grid_index(ivec3 grid_dim, ivec3 grid_pos) {
-    return grid_pos.z * (grid_dim.y * grid_dim.x) + grid_pos.y * grid_dim.x + grid_pos.x;
+uniform ivec3 grid_dim;
+uniform vec3 bounds_min;
+uniform vec3 bounds_max;
+vec3 bounds_size = bounds_max - bounds_min;
+vec3 cell_size = bounds_size / vec3(grid_dim);
+
+int grid_index(ivec3 grid_pos) {
+    return grid_pos.z * grid_dim.y * grid_dim.x + grid_pos.y * grid_dim.x + grid_pos.x;
 }
 
-bool grid_in_bounds(ivec3 grid_dim, ivec3 grid_pos) {
+bool grid_in_bounds(ivec3 grid_pos) {
     return grid_pos.x >= 0 && grid_pos.y >= 0 && grid_pos.z >= 0 &&
            grid_pos.x < grid_dim.x && grid_pos.y < grid_dim.y && grid_pos.z < grid_dim.y;
+}
+
+ivec3 get_grid_coord(vec3 pos, ivec3 half_offset) {
+    return ivec3(floor((pos + vec3(half_offset) * (cell_size / 2.0) - bounds_min) / bounds_size * vec3(grid_dim)));
+}
+
+vec3 get_world_coord(ivec3 grid_coord, ivec3 half_offset) {
+    return bounds_min + vec3(grid_coord) * cell_size + vec3(half_offset) * cell_size * 0.5;
+}
+
+int get_grid_index(ivec3 grid_coord) {
+    ivec3 clamped_coord = clamp(grid_coord, ivec3(0), grid_dim - ivec3(1));
+    return grid_index(clamped_coord);
 }
