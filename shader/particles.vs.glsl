@@ -23,6 +23,6 @@ void main() {
         color = particle_color;
     }
     if (display_mode == 1) {
-        color = vec4(vel / 0.001 * 0.5 + 0.5, 1.0);
+        color = vec4(vel / 0.01 * 0.5 + 0.5, 1.0);
     }
 }
