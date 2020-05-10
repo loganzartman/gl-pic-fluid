@@ -30,6 +30,8 @@ public:
     float camera_pitch = 0;
 
     Fluid fluid;
+    bool running = false;
+    bool do_step = false;
     bool grid_visible = false;
     bool particles_visible = true;
 
@@ -80,8 +82,12 @@ public:
         glEnable(GL_BLEND);
         glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
 
-        fluid.step();
-        fluid.ssbo_barrier();
+        if (running or do_step) {
+            do_step = false;
+            fluid.step();
+            fluid.ssbo_barrier();
+        }
+
         if (grid_visible)
             fluid.draw_grid(projection, view);
         if (particles_visible)

@@ -44,6 +44,12 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
         if (key == GLFW_KEY_G) {
             game->grid_visible = !game->grid_visible;
         }
+        if (key == GLFW_KEY_SPACE) {
+            game->running = !game->running;
+        }
+        if (key == GLFW_KEY_S) {
+            game->do_step = true;
+        }
     }
 }
 
