@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/random.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/vec_swizzle.hpp>
 #include "GridCell.hpp"
 #include "Particle.hpp"
 #include "util.hpp"
