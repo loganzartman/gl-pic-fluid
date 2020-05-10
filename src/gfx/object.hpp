@@ -14,23 +14,36 @@ static constexpr GLuint INSTANCED = 1;
 
 class Buffer {
     int _size = 0, _length = 0;
-public:
-    const GLuint target;
-    GLuint id;
-    
-    Buffer(GLuint target) : target(target) {
+    void create() {
+        if (id)
+            return;
         glGenBuffers(1, &id);
     }
 
-    ~Buffer() {
+    void destroy() {
+        if (!id)
+            return;
         glDeleteBuffers(1, &id);
+    }
+public:
+    const GLuint target;
+    GLuint id = 0;
+    
+    Buffer(GLuint target) : target(target) {}
+
+    ~Buffer() {
+        destroy();
     }
 
     void bind() const {
+        if (!id)
+            throw std::runtime_error("Buffer not initialized.");
         glBindBuffer(target, id);
     }
     
     void unbind() const {
+        if (!id)
+            throw std::runtime_error("Buffer not initialized.");
         glBindBuffer(target, 0);
     }
 
@@ -43,12 +56,14 @@ public:
     }
     
     Buffer& bind_base(GLuint index) {
+        create();
         glBindBufferBase(target, index, id);
         return *this;
     }
 
     template <typename T>
     void set_data(std::vector<T> data, GLenum usage = GL_STATIC_DRAW) {
+        create();
         glBindBuffer(target, id);
         glBufferData(target, sizeof(T) * data.size(), data.data(), usage);
         glBindBuffer(target, 0); // unbind
@@ -69,6 +84,8 @@ private:
 
     template <typename T>
     std::unique_ptr<T[], GlMappedBufferDeleter> unsafe_map_buffer(GLenum access) const {
+        if (!id)
+            throw std::runtime_error("Buffer not initialized.");
         bind();
         std::unique_ptr<T[], GlMappedBufferDeleter> ptr(static_cast<T*>(glMapBuffer(target, access)), GlMappedBufferDeleter{target, id});
         unbind();
@@ -110,24 +127,38 @@ class VAO {
     };
     int auto_attrib_counter = 0;
 
-public:
-    GLuint id;
-
-    VAO() {
+    void create() {
+        if (id)
+            return;
         // create VAO, which encapsulates the vertex buffer and its layout
         // https://www.khronos.org/opengl/wiki/Vertex_Specification#Vertex_Array_Object
         glGenVertexArrays(1, &id);
     }
 
-    ~VAO() {
+    void destroy() {
+        if (!id)
+            return;
         glDeleteVertexArrays(1, &id);
     }
 
+public:
+    GLuint id = 0;
+
+    VAO() {}
+
+    ~VAO() {
+        destroy();
+    }
+
     void bind() const {
+        if (!id)
+            throw std::runtime_error("VAO not initialized.");
         glBindVertexArray(id);
     }
 
     void unbind() const {
+        if (!id)
+            throw std::runtime_error("VAO not initialized.");
         glBindVertexArray(0);
     }
 
@@ -141,6 +172,7 @@ public:
     }
 
     VAO& bind_attrib(const Buffer& buffer, uint offset_bytes, GLuint stride, GLuint num_components, GLenum type, GLuint divisor) {
+        create();
         bind();
         const GLuint i = auto_attrib_counter;
         if (i >= GL_MAX_VERTEX_ATTRIBS) {

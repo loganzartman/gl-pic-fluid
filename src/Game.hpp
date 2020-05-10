@@ -37,7 +37,9 @@ public:
 
     Game(GLFWwindow* window) : window(window) {}
 
-    void init() {}
+    void init() {
+        fluid.init();
+    }
 
     void update_camera() {
         if (mouse_right_dragging) {

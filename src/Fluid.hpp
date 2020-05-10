@@ -33,11 +33,12 @@ struct Fluid {
     gfx::Program program; // program for particle rendering
     gfx::Program grid_program;
 
-    Fluid() {
-        initialize_ssbos();
+    Fluid() {}
+
+    void init() {
+        init_ssbos();
 
         // graphics initialization
-
         // circle vertices (for triangle fan)
         std::vector<glm::vec2> circle;
         for (int i = 0; i < num_circle_vertices; ++i) {
@@ -61,7 +62,7 @@ struct Fluid {
         grid_program.vertex({"common.glsl", "grid.vs.glsl"}).fragment({"grid.fs.glsl"}).compile();
     }
 
-    void initialize_ssbos() {
+    void init_ssbos() {
         std::vector<GridCell> initial_grid;
         std::vector<Particle> initial_particles;
         for (int gz = 0; gz < grid_dimensions.z; ++gz) {
