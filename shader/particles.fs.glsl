@@ -8,7 +8,7 @@ uniform vec4 viewport;
 uniform mat4 projection;
 uniform mat4 view;
 
-const bool shaded = true;
+const bool shaded = false;
 
 // adapted from https://gist.github.com/wwwtyro/beecc31d65d1004f5a9d
 vec3 ray_sphere_normal(vec3 r0, vec3 rd, vec3 s0, float sr) {
@@ -45,7 +45,7 @@ void main() {
     if (shaded) {
         vec3 eye = eye_pos();
         vec3 normal = ray_sphere_normal(eye, look, vs_particle_pos, vs_particle_radius); 
-        frag_color = vec4(shade(vs_particle_pos, normalize(look), normal, color.rgb * 0.3, color.rgb * 0.5, vec3(0.3), 8), color.a);
+        frag_color = vec4(shade(vs_particle_pos, normalize(look), normal, color.rgb * 0.3, color.rgb * 0.5, vec3(0.3), 16), color.a);
     }
     else {
         frag_color = color;

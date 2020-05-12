@@ -15,7 +15,7 @@
 struct Fluid {
     const int num_circle_vertices = 16; // circle detail for particle rendering
 
-    const int particle_density = 2;
+    const int particle_density = 8;
     const int grid_size = 8;
     const glm::ivec3 grid_dimensions{grid_size, grid_size, grid_size};
     const glm::ivec3 component_dimensions = grid_dimensions + glm::ivec3(1);
@@ -73,18 +73,19 @@ struct Fluid {
                     const glm::ivec3 gpos{gx, gy, gz};
                     const glm::vec3 cell_pos = bounds_min + bounds_size * glm::vec3(gpos) / glm::vec3(grid_dimensions);
 
-                    if (true or gy < grid_dimensions.y * 2 / 3 && gx < grid_dimensions.x / 3) {
+                    if (true or gx == grid_dimensions.x / 2 and gy == grid_dimensions.y / 2 and gz == grid_dimensions.z / 2) {
                         initial_grid.emplace_back(GridCell{
                             cell_pos,
-                            glm::vec3(0),
+                            glm::sin(cell_pos),
+                            // glm::vec3(0),
                             GRID_FLUID
                         });
                         for (int i = 0; i < particle_density; ++i) {
-                            // initial_particles.emplace_back(Particle{
-                            //     glm::linearRand(cell_pos, cell_pos + cell_size),
-                            //     glm::sphericalRand(0.01f),
-                            //     glm::vec4(0.32,0.57,0.79,1.0)
-                            // });
+                            initial_particles.emplace_back(Particle{
+                                glm::linearRand(cell_pos, cell_pos + cell_size),
+                                cell_pos,
+                                glm::vec4(0.32,0.57,0.79,1.0)
+                            });
                         }
                     } else {
                         initial_grid.emplace_back(GridCell{
@@ -96,11 +97,11 @@ struct Fluid {
                 }
             }
         }
-        initial_particles.emplace_back(Particle{
-            (bounds_min + bounds_max) / 2.f + cell_size / 3.f,
-            glm::vec3(0.005, 0.01, 0.01),
-            glm::vec4(1, 0, 1, 1)
-        });
+        // initial_particles.emplace_back(Particle{
+        //     (bounds_min + bounds_max) / 2.f + cell_size / 3.f,
+        //     glm::vec3(0.005, 0.01, 0.01),
+        //     glm::vec4(1, 0, 1, 1)
+        // });
         particle_ssbo.bind_base(0).set_data(initial_particles);
         grid_ssbo.bind_base(1).set_data(initial_grid);
         std::cerr << "Cell count: " << initial_grid.size() << std::endl;
@@ -218,9 +219,9 @@ struct Fluid {
     }
 
     void step() {
-        particle_to_grid();
-        grid_project();
-        // grid_to_particle();
+        // particle_to_grid();
+        // grid_project();
+        grid_to_particle();
         // particle_advect();
     }
 
