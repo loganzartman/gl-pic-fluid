@@ -21,7 +21,6 @@ void main() {
     }
     if (display_mode == 1) {
         if (length(vel) > 0) {discard_fragment = 0;}
-        // vs_color = vec3(vel / 0.01 * 0.5 + 0.5);
-        vs_color = vec3(vel);
+        vs_color = vec3(vel * 0.5 + 0.5);
     }
 }

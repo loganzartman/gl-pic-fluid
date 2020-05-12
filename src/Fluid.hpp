@@ -23,6 +23,7 @@ struct Fluid {
     const glm::vec3 bounds_max{1, 1, 1};
     const glm::vec3 bounds_size = bounds_max - bounds_min;
     const glm::vec3 cell_size = bounds_size / glm::vec3(grid_dimensions);
+    const glm::vec3 gravity{0, -9.8, 0};
 
     gfx::Buffer particle_ssbo{GL_SHADER_STORAGE_BUFFER}; // particle data storage
     gfx::Buffer grid_ssbo{GL_SHADER_STORAGE_BUFFER}; // grid data storage
@@ -31,6 +32,7 @@ struct Fluid {
     gfx::VAO grid_vao;
 
     gfx::Program particle_advect_program; // compute shader to operate on particles SSBO
+    gfx::Program body_forces_program; // compute shader to apply body forces on grid
     gfx::Program grid_to_particle_program;
     gfx::Program program; // program for particle rendering
     gfx::Program grid_program;
@@ -59,6 +61,7 @@ struct Fluid {
                 .bind_attrib(grid_ssbo, offsetof(GridCell, marker), sizeof(GridCell), 1, GL_INT, gfx::NOT_INSTANCED);
 
         grid_to_particle_program.compute({"common.glsl", "grid_to_particle.cs.glsl"}).compile();
+        body_forces_program.compute({"common.glsl", "body_forces.cs.glsl"}).compile();
         particle_advect_program.compute({"common.glsl", "particle_advect.cs.glsl"}).compile();
         program.vertex({"particles.vs.glsl"}).fragment({"lighting.glsl", "particles.fs.glsl"}).compile();
         grid_program.vertex({"common.glsl", "grid.vs.glsl"}).fragment({"grid.fs.glsl"}).compile();
@@ -76,8 +79,7 @@ struct Fluid {
                     if (true or gx == grid_dimensions.x / 2 and gy == grid_dimensions.y / 2 and gz == grid_dimensions.z / 2) {
                         initial_grid.emplace_back(GridCell{
                             cell_pos,
-                            glm::sin(cell_pos),
-                            // glm::vec3(0),
+                            glm::vec3(0),
                             GRID_FLUID
                         });
                         for (int i = 0; i < particle_density; ++i) {
@@ -189,8 +191,21 @@ struct Fluid {
         }
     }
 
-    void grid_project() {
+    void apply_body_forces(float dt) {
+        ssbo_barrier();
+        body_forces_program.use();
+        const glm::vec3 body_force = gravity; // TODO: other forces?
+        glUniform1f(body_forces_program.uniform_loc("dt"), dt);
+        glUniform3fv(body_forces_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
+        glUniform3fv(body_forces_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
+        glUniform3iv(body_forces_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
+        glUniform3fv(body_forces_program.uniform_loc("body_force"), 1, glm::value_ptr(body_force));
+        body_forces_program.validate();
+        glDispatchCompute(grid_dimensions.x, grid_dimensions.y, grid_dimensions.z);
+        body_forces_program.disuse();
+    }
 
+    void grid_project(float dt) {
     }
 
     void grid_to_particle() {
@@ -204,9 +219,10 @@ struct Fluid {
         grid_to_particle_program.disuse();
     }
 
-    void particle_advect() {
+    void particle_advect(float dt) {
         ssbo_barrier();
         particle_advect_program.use();
+        glUniform1f(particle_advect_program.uniform_loc("dt"), dt);
         glUniform3fv(particle_advect_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
         glUniform3fv(particle_advect_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
         glDispatchCompute(particle_ssbo.length(), 1, 1);
@@ -219,10 +235,12 @@ struct Fluid {
     }
 
     void step() {
+        const float dt = 0.01;
         // particle_to_grid();
-        // grid_project();
+        apply_body_forces(dt);
+        grid_project(dt);
         grid_to_particle();
-        // particle_advect();
+        particle_advect(dt);
     }
 
     void draw_particles(const glm::mat4& projection, const glm::mat4& view, const glm::vec4& viewport) {

@@ -9,7 +9,7 @@ out float vs_particle_radius;
 uniform mat4 projection;
 uniform mat4 view;
 
-const int display_mode = 0;
+const int display_mode = 1;
 
 void main() {
     const float radius = 0.015;
@@ -23,6 +23,6 @@ void main() {
         color = particle_color;
     }
     if (display_mode == 1) {
-        color = vec4(vel / 0.01 * 0.5 + 0.5, 1.0);
+        color = vec4(vel * 0.5 + 0.5, 1.0);
     }
 }
