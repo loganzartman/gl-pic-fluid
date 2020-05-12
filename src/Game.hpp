@@ -70,7 +70,8 @@ public:
         const glm::mat4 projection = glm::perspective(glm::radians(30.f), aspect_ratio, 0.1f, 100.f);
 
         // view matrix (orbit camera) 
-        glm::vec3 eye(0, 0, 6);
+        glm::vec3 eye(0, 0, -6);
+        // TODO: use quaternions
         eye = glm::rotate(eye, camera_yaw, glm::vec3(0, 1, 0));
         eye = glm::rotate(eye, camera_pitch, glm::cross(glm::vec3(0, 1, 0), eye));
         const glm::mat4 view = glm::lookAt(eye, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
