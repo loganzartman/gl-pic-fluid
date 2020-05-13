@@ -195,6 +195,8 @@ public:
         
         if (integer_types.count(type)) {
             glVertexAttribIFormat(i, num_components, type, 0);
+        } else if (type == GL_DOUBLE) {
+            glVertexAttribLFormat(i, num_components, type, 0);
         } else {
             glVertexAttribFormat(
                 i, // attribute index
