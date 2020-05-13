@@ -70,8 +70,7 @@ struct Fluid {
             .bind_attrib(debug_lines_ssbo, offsetof(DebugLine, color), sizeof(DebugLine), 4, GL_FLOAT, gfx::NOT_INSTANCED);
         
         grid_to_particle_program.compute({"common.glsl", "grid_to_particle.cs.glsl"}).compile();
-        body_forces_program.compute({"common.glsl", "body_forces.cs.glsl"}).compile();
-        enforce_boundary_program.compute({"common.glsl", "enforce_boundary.cs.glsl"}).compile();
+        body_forces_program.compute({"common.glsl", "enforce_boundary.cs.glsl", "body_forces.cs.glsl"}).compile();
         particle_advect_program.compute({"common.glsl", "particle_advect.cs.glsl"}).compile();
         program.vertex({"particles.vs.glsl"}).fragment({"lighting.glsl", "particles.fs.glsl"}).compile();
         grid_program.vertex({"common.glsl", "grid.vs.glsl"}).fragment({"grid.fs.glsl"}).compile();
@@ -225,6 +224,7 @@ struct Fluid {
     }
 
     void apply_body_forces(float dt) {
+        // also enforces boundary condition
         ssbo_barrier();
         body_forces_program.use();
         const glm::vec3 body_force = gravity; // TODO: other forces?
@@ -236,17 +236,6 @@ struct Fluid {
         body_forces_program.validate();
         glDispatchCompute(grid_dimensions.x, grid_dimensions.y, grid_dimensions.z);
         body_forces_program.disuse();
-    }
-
-    void enforce_boundary() {
-        ssbo_barrier();
-        enforce_boundary_program.use();
-        glUniform3fv(enforce_boundary_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
-        glUniform3fv(enforce_boundary_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
-        glUniform3iv(enforce_boundary_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
-        enforce_boundary_program.validate();
-        glDispatchCompute(grid_dimensions.x, grid_dimensions.y, grid_dimensions.z);
-        enforce_boundary_program.disuse();
     }
 
     void grid_project(float dt) {
@@ -282,7 +271,6 @@ struct Fluid {
         const float dt = 0.01;
         particle_to_grid();
         apply_body_forces(dt);
-        enforce_boundary();
         // grid_project(dt);
         grid_to_particle();
         particle_advect(dt);
