@@ -36,6 +36,7 @@ struct Fluid {
 
     gfx::Program particle_advect_program; // compute shader to operate on particles SSBO
     gfx::Program body_forces_program; // compute shader to apply body forces on grid
+    gfx::Program enforce_boundary_program; // compute shader to enforce boundary condition on grid
     gfx::Program grid_to_particle_program;
     gfx::Program program; // program for particle rendering
     gfx::Program grid_program;
@@ -70,13 +71,11 @@ struct Fluid {
         
         grid_to_particle_program.compute({"common.glsl", "grid_to_particle.cs.glsl"}).compile();
         body_forces_program.compute({"common.glsl", "body_forces.cs.glsl"}).compile();
+        enforce_boundary_program.compute({"common.glsl", "enforce_boundary.cs.glsl"}).compile();
         particle_advect_program.compute({"common.glsl", "particle_advect.cs.glsl"}).compile();
         program.vertex({"particles.vs.glsl"}).fragment({"lighting.glsl", "particles.fs.glsl"}).compile();
         grid_program.vertex({"common.glsl", "grid.vs.glsl"}).fragment({"grid.fs.glsl"}).compile();
-        debug_lines_program
-            .vertex({"debug_lines.vs.glsl"})
-            .geometry({"debug_lines.gs.glsl"})
-            .fragment({"debug_lines.fs.glsl"}).compile();
+        debug_lines_program.vertex({"debug_lines.vs.glsl"}).geometry({"debug_lines.gs.glsl"}).fragment({"debug_lines.fs.glsl"}).compile();
     }
 
     void init_ssbos() {
@@ -239,6 +238,17 @@ struct Fluid {
         body_forces_program.disuse();
     }
 
+    void enforce_boundary() {
+        ssbo_barrier();
+        enforce_boundary_program.use();
+        glUniform3fv(enforce_boundary_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
+        glUniform3fv(enforce_boundary_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
+        glUniform3iv(enforce_boundary_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
+        enforce_boundary_program.validate();
+        glDispatchCompute(grid_dimensions.x, grid_dimensions.y, grid_dimensions.z);
+        enforce_boundary_program.disuse();
+    }
+
     void grid_project(float dt) {
     }
 
@@ -272,6 +282,7 @@ struct Fluid {
         const float dt = 0.01;
         particle_to_grid();
         apply_body_forces(dt);
+        enforce_boundary();
         // grid_project(dt);
         grid_to_particle();
         particle_advect(dt);
