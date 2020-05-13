@@ -33,10 +33,11 @@ layout(std430, binding=2) restrict buffer DebugLinesBlock {
 };
 
 uniform ivec3 grid_dim;
+ivec3 grid_cell_dim = grid_dim - ivec3(1);
 uniform vec3 bounds_min;
 uniform vec3 bounds_max;
 vec3 bounds_size = bounds_max - bounds_min;
-vec3 cell_size = bounds_size / vec3(grid_dim);
+vec3 cell_size = bounds_size / vec3(grid_dim - ivec3(1));
 
 bool grid_in_bounds(ivec3 grid_coord) {
     return grid_coord.x >= 0 && grid_coord.y >= 0 && grid_coord.z >= 0 &&
@@ -44,7 +45,7 @@ bool grid_in_bounds(ivec3 grid_coord) {
 }
 
 ivec3 get_grid_coord(vec3 pos, ivec3 half_offset) {
-    return ivec3(floor((pos + vec3(half_offset) * (cell_size / 2.0) - bounds_min) / bounds_size * vec3(grid_dim)));
+    return ivec3(floor((pos + vec3(half_offset) * (cell_size / 2.0) - bounds_min) / bounds_size * vec3(grid_cell_dim)));
 }
 
 vec3 get_world_coord(ivec3 grid_coord, ivec3 half_offset) {

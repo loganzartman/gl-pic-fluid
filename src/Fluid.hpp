@@ -273,7 +273,7 @@ struct Fluid {
         particle_to_grid();
         apply_body_forces(dt);
         // grid_project(dt);
-        // grid_to_particle();
+        grid_to_particle();
         particle_advect(dt);
     }
 
