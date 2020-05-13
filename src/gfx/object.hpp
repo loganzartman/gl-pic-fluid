@@ -172,8 +172,10 @@ public:
     }
 
     VAO& bind_attrib(const Buffer& buffer, uint offset_bytes, GLuint stride, GLuint num_components, GLenum type, GLuint divisor) {
-        create();
-        bind();
+        if (buffer.id == 0) {
+            throw std::runtime_error("Buffer not initialized.");
+        }
+
         const GLuint i = auto_attrib_counter;
         if (i >= GL_MAX_VERTEX_ATTRIBS) {
             std::stringstream str;
@@ -181,6 +183,9 @@ public:
             str << " is >= max of " << GL_MAX_VERTEX_ATTRIBS;
             throw std::runtime_error(str.str());
         }
+
+        create();
+        bind();
 
         glEnableVertexAttribArray(i);
 
