@@ -4,7 +4,6 @@
 
 ## Requirements
 
-* Linux or Windows
 * OpenGL >= 4.3
 * cmake >= 3.10
 * C++ compiler for version >= 17
@@ -19,3 +18,4 @@
 ## Development
 
 * Make sure to list new source files in CMakeLists.txt!
+* Simulation code is split across `src/Fluid.hpp` and `*.cs.glsl` shaders in `shader/`
