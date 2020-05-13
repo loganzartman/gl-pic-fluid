@@ -16,8 +16,8 @@
 struct Fluid {
     const int num_circle_vertices = 16; // circle detail for particle rendering
 
-    const int particle_density = 16;
-    const int grid_size = 8;
+    const int particle_density = 8;
+    const int grid_size = 16;
     const glm::ivec3 grid_dimensions{grid_size + 1, grid_size + 1, grid_size + 1};
     const glm::ivec3 grid_cell_dimensions{grid_size, grid_size, grid_size};
     const glm::vec3 bounds_min{-1, -1, -1};
@@ -86,7 +86,7 @@ struct Fluid {
                     const glm::ivec3 gpos{gx, gy, gz};
                     const glm::vec3 cell_pos = get_world_coord(gpos);
 
-                    if (true or gx == grid_dimensions.x / 2 and gy == grid_dimensions.y / 2 and gz == grid_dimensions.z / 2) {
+                    if (gx < grid_cell_dimensions.x / 3 and gy < grid_cell_dimensions.y * 2 / 3) {
                         initial_grid.emplace_back(GridCell{
                             cell_pos,
                             glm::vec3(0),
@@ -98,7 +98,7 @@ struct Fluid {
                                 const glm::vec3 particle_pos = glm::linearRand(cell_pos, cell_pos + cell_size);
                                 initial_particles.emplace_back(Particle{
                                     particle_pos,
-                                    glm::vec3(0, (particle_pos.x + 1) / 2, 0),
+                                    glm::vec3(0),
                                     glm::vec4(0.32,0.57,0.79,1.0)
                                 });
                             }
@@ -214,6 +214,7 @@ struct Fluid {
 
         // divide out weights
         for (int i = 0; i < grid_ssbo.length(); ++i) {
+            // do this conditionally to avoid 0/0 NaNs
             if (grid[i].vel.x != 0)
                 grid[i].vel.x /= cell_weights[i].x;
             if (grid[i].vel.y != 0)

@@ -5,7 +5,6 @@ vec3 interpolate_velocity(uint index, ivec3 dimension_offset) {
     // dimension_offset should correspond to the component of velocity being interpolated
     // other components of interpolated velocity are not meaningful
 
-    // u
     // this part will change for each u, v, w
     ivec3 base_coord = get_grid_coord(particle[index].pos, -dimension_offset);
     vec3 weights = (particle[index].pos - get_world_coord(base_coord, dimension_offset)) / cell_size;
@@ -40,10 +39,5 @@ void main() {
     particle[index].vel.x = interpolate_velocity(index, ivec3(1, 0, 0)).x;
     particle[index].vel.y = interpolate_velocity(index, ivec3(0, 1, 0)).y;
     particle[index].vel.z = interpolate_velocity(index, ivec3(0, 0, 1)).z;
-    
-    // debug
-    // particle[index].color = vec4(weights, 1.0); // looks good
-    // particle[index].color = vec4(base_coord, 1.0); // looks good...
-    particle[index].color = vec4(particle[index].vel, 1.0);
 }
 
