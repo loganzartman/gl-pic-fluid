@@ -13,14 +13,13 @@ void main() {
 
     vs_color = vec3(1.0, 0, 1.0);
     discard_fragment = 0;
-    if (marker == AIR) {discard_fragment = 1;}
+    // if (marker == AIR) {discard_fragment = 1;}
 
     if (display_mode == 0) {
         if (marker == SOLID) {vs_color = vec3(0.0, 1.0, 0.0);}
         if (marker == FLUID) {vs_color = vec3(0.0, 0.0, 1.0);}
     }
     if (display_mode == 1) {
-        if (length(vel) > 0) {discard_fragment = 0;}
         vs_color = vec3(vel);
     }
 }
