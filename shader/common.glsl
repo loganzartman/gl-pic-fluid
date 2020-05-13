@@ -14,12 +14,22 @@ struct GridCell {
     vec3 vel;
 };
 
+struct DebugLine {
+    vec4 color;
+    vec3 a;
+    vec3 b;
+};
+
 layout(std430, binding=0) restrict buffer ParticleBlock {
     Particle particle[];
 };
 
 layout(std430, binding=1) restrict buffer GridBlock {
     GridCell cell[];
+};
+
+layout(std430, binding=2) restrict buffer DebugLinesBlock {
+    DebugLine debug_lines[];
 };
 
 uniform ivec3 grid_dim;

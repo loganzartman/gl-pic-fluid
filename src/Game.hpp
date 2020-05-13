@@ -93,6 +93,7 @@ public:
             fluid.draw_grid(projection, view);
         if (particles_visible)
             fluid.draw_particles(projection, view, viewport);
+        fluid.draw_debug_lines(projection, view);
         box.draw(projection, view, eye);
     }
 };

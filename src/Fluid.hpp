@@ -8,6 +8,7 @@
 #include <glm/gtx/vec_swizzle.hpp>
 #include "GridCell.hpp"
 #include "Particle.hpp"
+#include "DebugLine.hpp"
 #include "util.hpp"
 #include "gfx/object.hpp"
 #include "gfx/program.hpp"
@@ -28,14 +29,17 @@ struct Fluid {
     gfx::Buffer particle_ssbo{GL_SHADER_STORAGE_BUFFER}; // particle data storage
     gfx::Buffer grid_ssbo{GL_SHADER_STORAGE_BUFFER}; // grid data storage
     gfx::Buffer circle_verts{GL_ARRAY_BUFFER};
+    gfx::Buffer debug_lines_ssbo{GL_SHADER_STORAGE_BUFFER};
     gfx::VAO vao;
     gfx::VAO grid_vao;
+    gfx::VAO debug_lines_vao; // used for drawing colored lines for debugging
 
     gfx::Program particle_advect_program; // compute shader to operate on particles SSBO
     gfx::Program body_forces_program; // compute shader to apply body forces on grid
     gfx::Program grid_to_particle_program;
     gfx::Program program; // program for particle rendering
     gfx::Program grid_program;
+    gfx::Program debug_lines_program;
 
     Fluid() {}
 
@@ -57,14 +61,22 @@ struct Fluid {
            .bind_attrib(particle_ssbo, offsetof(Particle, color), sizeof(Particle), 4, GL_FLOAT, gfx::INSTANCED);
         
         grid_vao.bind_attrib(grid_ssbo, offsetof(GridCell, pos), sizeof(GridCell), 3, GL_FLOAT, gfx::NOT_INSTANCED)
-                .bind_attrib(grid_ssbo, offsetof(GridCell, vel), sizeof(GridCell), 3, GL_FLOAT, gfx::NOT_INSTANCED)
-                .bind_attrib(grid_ssbo, offsetof(GridCell, marker), sizeof(GridCell), 1, GL_INT, gfx::NOT_INSTANCED);
+           .bind_attrib(grid_ssbo, offsetof(GridCell, vel), sizeof(GridCell), 3, GL_FLOAT, gfx::NOT_INSTANCED)
+           .bind_attrib(grid_ssbo, offsetof(GridCell, marker), sizeof(GridCell), 1, GL_INT, gfx::NOT_INSTANCED);
 
+        debug_lines_vao.bind_attrib(debug_lines_ssbo, offsetof(DebugLine, a), sizeof(DebugLine), 3, GL_FLOAT, gfx::NOT_INSTANCED)
+            .bind_attrib(debug_lines_ssbo, offsetof(DebugLine, b), sizeof(DebugLine), 3, GL_FLOAT, gfx::NOT_INSTANCED)
+            .bind_attrib(debug_lines_ssbo, offsetof(DebugLine, color), sizeof(DebugLine), 4, GL_FLOAT, gfx::NOT_INSTANCED);
+        
         grid_to_particle_program.compute({"common.glsl", "grid_to_particle.cs.glsl"}).compile();
         body_forces_program.compute({"common.glsl", "body_forces.cs.glsl"}).compile();
         particle_advect_program.compute({"common.glsl", "particle_advect.cs.glsl"}).compile();
         program.vertex({"particles.vs.glsl"}).fragment({"lighting.glsl", "particles.fs.glsl"}).compile();
         grid_program.vertex({"common.glsl", "grid.vs.glsl"}).fragment({"grid.fs.glsl"}).compile();
+        debug_lines_program
+            .vertex({"debug_lines.vs.glsl"})
+            .geometry({"debug_lines.gs.glsl"})
+            .fragment({"debug_lines.fs.glsl"}).compile();
     }
 
     void init_ssbos() {
@@ -108,6 +120,14 @@ struct Fluid {
         grid_ssbo.bind_base(1).set_data(initial_grid);
         std::cerr << "Cell count: " << initial_grid.size() << std::endl;
         std::cerr << "Particle count: " << initial_particles.size() << std::endl;
+
+        std::vector<DebugLine> debug_lines;
+        debug_lines.push_back(DebugLine({0, 0, 0}, {0.1, 0, 0}, {1, 0, 0, 1})); // x axis
+        debug_lines.push_back(DebugLine({0, 0, 0}, {0, 0.1, 0}, {0, 1, 0, 1})); // y axis
+        debug_lines.push_back(DebugLine({0, 0, 0}, {0, 0, 0.1}, {0, 0, 1, 1})); // z axis
+        debug_lines_ssbo.bind_base(2).set_data(debug_lines); 
+
+        std::cout << "Size of debug lines buffer " << debug_lines_ssbo.length() << " (" << debug_lines_ssbo.size() << " bytes)" << std::endl;
     }
 
     glm::ivec3 get_grid_coord(const glm::vec3& pos, const glm::ivec3& half_offset = glm::ivec3(0, 0, 0)) {
@@ -265,5 +285,16 @@ struct Fluid {
         glDrawArrays(GL_POINTS, 0, grid_ssbo.length());
         grid_vao.unbind();
         grid_program.disuse();
+    }
+
+    void draw_debug_lines(const glm::mat4& projection, const glm::mat4& view) {
+        debug_lines_program.use();
+        glUniformMatrix4fv(debug_lines_program.uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(projection));
+        glUniformMatrix4fv(debug_lines_program.uniform_loc("view"), 1, GL_FALSE, glm::value_ptr(view));
+        debug_lines_vao.bind();
+        glLineWidth(4.0);
+        glDrawArrays(GL_POINTS, 0, debug_lines_ssbo.length());
+        debug_lines_vao.unbind();
+        debug_lines_program.disuse();
     }
 };
