@@ -3,6 +3,7 @@ layout (location=1) in vec3 vel;
 layout (location=2) in int type;
 layout (location=3) in float rhs;
 layout (location=4) in vec4 a;
+layout (location=5) in float pressure;
 
 flat out int vs_display_mode;
 out vec3 vs_pos;
@@ -31,5 +32,8 @@ void main() {
     }
     if (display_mode == 3) {
         vs_color = vec3(abs(a.yzw));
+    }
+    if (display_mode == 4) {
+        vs_color = vec3(abs(pressure));
     }
 }

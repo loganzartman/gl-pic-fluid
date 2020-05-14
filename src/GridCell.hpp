@@ -17,5 +17,8 @@ struct GridCell {
     alignas(4)  float a_y = 0;
     alignas(4)  float a_z = 0;
 
+    alignas(4)  float pressure_guess = 0;
+    alignas(4)  float pressure = 0;
+
     GridCell(const glm::vec3& pos, const glm::vec3& vel, int type) : pos(pos), type(type), vel(vel) {}
 };

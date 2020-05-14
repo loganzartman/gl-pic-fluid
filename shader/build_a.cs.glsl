@@ -2,6 +2,9 @@ void build_a() {
     ivec3 grid_pos = ivec3(gl_WorkGroupID);
     uint index = get_grid_index(grid_pos);
 
+    cell[index].pressure = 0;
+    cell[index].pressure_guess = 0;
+
     cell[index].a_diag = 0;
     cell[index].a_x = 0;
     cell[index].a_y = 0;

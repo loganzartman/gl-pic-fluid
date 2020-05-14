@@ -17,6 +17,8 @@ struct GridCell {
     float a_x;
     float a_y;
     float a_z;
+    float pressure_guess;
+    float pressure;
 };
 
 struct DebugLine {
