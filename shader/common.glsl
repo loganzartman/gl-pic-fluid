@@ -13,6 +13,10 @@ struct GridCell {
     int type;
     vec3 vel;
     float rhs;
+    float a_diag;
+    float a_x;
+    float a_y;
+    float a_z;
 };
 
 struct DebugLine {
@@ -33,6 +37,7 @@ layout(std430, binding=2) restrict buffer DebugLinesBlock {
     DebugLine debug_lines[];
 };
 
+const float density = 1; // kg/m^3
 uniform ivec3 grid_dim;
 ivec3 grid_cell_dim = grid_dim - ivec3(1);
 uniform vec3 bounds_min;

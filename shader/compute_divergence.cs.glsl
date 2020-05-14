@@ -1,8 +1,4 @@
-layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
-
-uniform float dt;
-
-void main() {
+void compute_divergence() {
     ivec3 grid_pos = ivec3(gl_WorkGroupID);
     uint index = get_grid_index(grid_pos);
 
