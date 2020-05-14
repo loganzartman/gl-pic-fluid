@@ -10,8 +10,9 @@ struct Particle {
 
 struct GridCell {
     vec3 pos;
-    int marker;
+    int type;
     vec3 vel;
+    float rhs;
 };
 
 struct DebugLine {

@@ -36,7 +36,7 @@ struct Fluid {
 
     gfx::Program particle_advect_program; // compute shader to operate on particles SSBO
     gfx::Program body_forces_program; // compute shader to apply body forces on grid
-    gfx::Program enforce_boundary_program; // compute shader to enforce boundary condition on grid
+    gfx::Program compute_divergence_program; // compute RHS of pressure equation
     gfx::Program grid_to_particle_program;
     gfx::Program program; // program for particle rendering
     gfx::Program grid_program;
@@ -63,7 +63,8 @@ struct Fluid {
         
         grid_vao.bind_attrib(grid_ssbo, offsetof(GridCell, pos), sizeof(GridCell), 3, GL_FLOAT, gfx::NOT_INSTANCED)
            .bind_attrib(grid_ssbo, offsetof(GridCell, vel), sizeof(GridCell), 3, GL_FLOAT, gfx::NOT_INSTANCED)
-           .bind_attrib(grid_ssbo, offsetof(GridCell, marker), sizeof(GridCell), 1, GL_INT, gfx::NOT_INSTANCED);
+           .bind_attrib(grid_ssbo, offsetof(GridCell, type), sizeof(GridCell), 1, GL_INT, gfx::NOT_INSTANCED)
+           .bind_attrib(grid_ssbo, offsetof(GridCell, rhs), sizeof(GridCell), 1, GL_FLOAT, gfx::NOT_INSTANCED);
 
         debug_lines_vao.bind_attrib(debug_lines_ssbo, offsetof(DebugLine, a), sizeof(DebugLine), 3, GL_FLOAT, gfx::NOT_INSTANCED)
             .bind_attrib(debug_lines_ssbo, offsetof(DebugLine, b), sizeof(DebugLine), 3, GL_FLOAT, gfx::NOT_INSTANCED)
@@ -71,6 +72,7 @@ struct Fluid {
         
         grid_to_particle_program.compute({"common.glsl", "grid_to_particle.cs.glsl"}).compile();
         body_forces_program.compute({"common.glsl", "enforce_boundary.cs.glsl", "body_forces.cs.glsl"}).compile();
+        compute_divergence_program.compute({"common.glsl", "compute_divergence.cs.glsl"}).compile();
         particle_advect_program.compute({"common.glsl", "particle_advect.cs.glsl"}).compile();
         program.vertex({"particles.vs.glsl"}).fragment({"lighting.glsl", "particles.fs.glsl"}).compile();
         grid_program.vertex({"common.glsl", "grid.vs.glsl"}).fragment({"grid.fs.glsl"}).compile();
@@ -156,7 +158,7 @@ struct Fluid {
 
         // clear grid values
         for (int i = 0; i < grid_ssbo.length(); ++i) {
-            grid[i].marker = GRID_AIR;
+            grid[i].type = GRID_AIR;
             grid[i].vel = glm::vec3(0);
         }
 
@@ -190,7 +192,7 @@ struct Fluid {
             const Particle& p = particles[i];
             const glm::ivec3 grid_coord_center = get_grid_coord(p.pos);
             const int center_index = get_grid_index(grid_coord_center);
-            grid[center_index].marker = GRID_FLUID;
+            grid[center_index].type = GRID_FLUID;
 
             // u
             {
@@ -239,6 +241,18 @@ struct Fluid {
         body_forces_program.disuse();
     }
 
+    void compute_divergence(float dt) {
+        ssbo_barrier();
+        compute_divergence_program.use();
+        glUniform1f(compute_divergence_program.uniform_loc("dt"), dt);
+        glUniform3fv(compute_divergence_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
+        glUniform3fv(compute_divergence_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
+        glUniform3iv(compute_divergence_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
+        compute_divergence_program.validate();
+        glDispatchCompute(grid_dimensions.x, grid_dimensions.y, grid_dimensions.z);
+        compute_divergence_program.disuse();
+    }
+
     void grid_project(float dt) {
     }
 
@@ -272,6 +286,7 @@ struct Fluid {
         const float dt = 0.01;
         particle_to_grid();
         apply_body_forces(dt);
+        compute_divergence(dt);
         // grid_project(dt);
         grid_to_particle();
         particle_advect(dt);
