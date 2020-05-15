@@ -36,6 +36,7 @@ struct Fluid {
 
     gfx::Program particle_advect_program; // compute shader to operate on particles SSBO
     gfx::Program body_forces_program; // compute shader to apply body forces on grid
+    gfx::Program extrapolate_program; // extrapolate grid velocities by one cell
     gfx::Program setup_grid_project_program; // compute A and RHS of pressure equation
     gfx::Program jacobi_iterate_program; // single jacobi iteration to solve for pressure gradient 
     gfx::Program pressure_to_guess_program; // copy pressure to pressure_guess for pressure solve
@@ -70,13 +71,15 @@ struct Fluid {
            .bind_attrib(grid_ssbo, offsetof(GridCell, type), sizeof(GridCell), 1, GL_INT, gfx::NOT_INSTANCED)
            .bind_attrib(grid_ssbo, offsetof(GridCell, rhs), sizeof(GridCell), 1, GL_FLOAT, gfx::NOT_INSTANCED)
            .bind_attrib(grid_ssbo, offsetof(GridCell, a_diag), sizeof(GridCell), 4, GL_FLOAT, gfx::NOT_INSTANCED)
-           .bind_attrib(grid_ssbo, offsetof(GridCell, pressure), sizeof(GridCell), 1, GL_FLOAT, gfx::NOT_INSTANCED);
+           .bind_attrib(grid_ssbo, offsetof(GridCell, pressure), sizeof(GridCell), 1, GL_FLOAT, gfx::NOT_INSTANCED)
+           .bind_attrib(grid_ssbo, offsetof(GridCell, vel_unknown), sizeof(GridCell), 1, GL_INT, gfx::NOT_INSTANCED);
 
         debug_lines_vao.bind_attrib(debug_lines_ssbo, offsetof(DebugLine, a), sizeof(DebugLine), 3, GL_FLOAT, gfx::NOT_INSTANCED)
             .bind_attrib(debug_lines_ssbo, offsetof(DebugLine, b), sizeof(DebugLine), 3, GL_FLOAT, gfx::NOT_INSTANCED)
             .bind_attrib(debug_lines_ssbo, offsetof(DebugLine, color), sizeof(DebugLine), 4, GL_FLOAT, gfx::NOT_INSTANCED);
         
         grid_to_particle_program.compute({"common.glsl", "grid_to_particle.cs.glsl"}).compile();
+        extrapolate_program.compute({"common.glsl", "extrapolate.cs.glsl"}).compile();
         body_forces_program.compute({"common.glsl", "enforce_boundary.cs.glsl", "body_forces.cs.glsl"}).compile();
         setup_grid_project_program.compute({"common.glsl", "setup_project.cs.glsl", "compute_divergence.cs.glsl", "build_a.cs.glsl"}).compile();
         jacobi_iterate_program.compute({"common.glsl", "jacobi_iterate.cs.glsl"}).compile();
@@ -168,6 +171,7 @@ struct Fluid {
         // clear grid values
         for (int i = 0; i < grid_ssbo.length(); ++i) {
             grid[i].type = GRID_AIR;
+            grid[i].vel_unknown = 1;
             grid[i].vel = glm::vec3(0);
         }
 
@@ -178,6 +182,7 @@ struct Fluid {
             const int index = get_grid_index(grid_coord);
             const float weight = glm::compMul(weights);
             grid[index].vel += value * weight;
+            grid[index].vel_unknown = 0;
             if (value.x != 0)
                 cell_weights[index] += glm::vec3(weight, 0, 0);
             if (value.y != 0)
@@ -233,6 +238,17 @@ struct Fluid {
             if (grid[i].vel.z != 0)
                 grid[i].vel.z /= cell_weights[i].z;
         }
+    }
+
+    void extrapolate() {
+        ssbo_barrier();
+        extrapolate_program.use();
+        glUniform3fv(extrapolate_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
+        glUniform3fv(extrapolate_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
+        glUniform3iv(extrapolate_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
+        extrapolate_program.validate();
+        glDispatchCompute(grid_dimensions.x, grid_dimensions.y, grid_dimensions.z);
+        extrapolate_program.disuse();
     }
 
     void apply_body_forces(float dt) {
@@ -335,6 +351,7 @@ struct Fluid {
     void step() {
         const float dt = 0.01;
         particle_to_grid();
+        extrapolate();
         apply_body_forces(dt);
         grid_project(dt);
         grid_to_particle();

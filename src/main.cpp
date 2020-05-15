@@ -70,6 +70,9 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
         if (key == GLFW_KEY_5) {
             game->grid_display_mode = 4;
         }
+        if (key == GLFW_KEY_6) {
+            game->grid_display_mode = 5;
+        }
     }
 }
 

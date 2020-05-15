@@ -4,6 +4,7 @@ layout (location=2) in int type;
 layout (location=3) in float rhs;
 layout (location=4) in vec4 a;
 layout (location=5) in float pressure;
+layout (location=6) in int vel_unknown;
 
 flat out int vs_display_mode;
 out vec3 vs_pos;
@@ -26,7 +27,7 @@ void main() {
         if (type == FLUID) {vs_color = vec3(0.0, 0.0, 1.0);}
     }
     if (display_mode == 1) {
-        vs_color = vec3(abs(vel)) * 10;
+        vs_color = vec3(abs(vel));
     }
     if (display_mode == 2) {
         vs_color = vec3(max(0, -rhs), max(0, rhs), 0);
@@ -36,5 +37,8 @@ void main() {
     }
     if (display_mode == 4) {
         vs_color = isnan(pressure) ? vec3(1, 0, 1) : vec3(max(0, -pressure), max(0, pressure), 0);
+    }
+    if (display_mode == 5) {
+        vs_color = vel_unknown == 1 ? vec3(1, 0, 0) : vec3(0);
     }
 }
