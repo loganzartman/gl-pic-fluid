@@ -18,33 +18,28 @@ void main() {
     float LUp = 0;
     if (grid_pos.x > 0) {
         uint i = get_grid_index(grid_pos + ivec3(-1, 0, 0));
-        LUp -= cell[i].pressure_guess * cell[index].a_x;
+        LUp += cell[i].pressure_guess;
     }
     if (grid_pos.y > 0) {
         uint i = get_grid_index(grid_pos + ivec3(0, -1, 0));
-        LUp -= cell[i].pressure_guess * cell[index].a_y;
+        LUp += cell[i].pressure_guess;
     }
     if (grid_pos.z > 0) {
         uint i = get_grid_index(grid_pos + ivec3(0, 0, -1));
-        LUp -= cell[i].pressure_guess * cell[index].a_z;
+        LUp += cell[i].pressure_guess;
     }
     if (grid_pos.x < grid_dim.x - 1) {
         uint i = get_grid_index(grid_pos + ivec3(1, 0, 0));
-        LUp += cell[i].pressure_guess * cell[index].a_x;
+        LUp += cell[i].pressure_guess;
     }
     if (grid_pos.y < grid_dim.y - 1) {
         uint i = get_grid_index(grid_pos + ivec3(0, 1, 0));
-        LUp += cell[i].pressure_guess * cell[index].a_y;
+        LUp += cell[i].pressure_guess;
     }
     if (grid_pos.z < grid_dim.z - 1) {
         uint i = get_grid_index(grid_pos + ivec3(0, 0, 1));
-        LUp += cell[i].pressure_guess * cell[index].a_z;
+        LUp += cell[i].pressure_guess;
     }
 
-    if (cell[index].a_diag > 0) {
-        float Dinv = 1.0 / cell[index].a_diag;
-        cell[index].pressure = cell[index].pressure * 0.7 + Dinv * (cell[index].rhs - LUp) * 0.3;
-    } else {
-        cell[index].pressure = 0;
-    }
+    cell[index].pressure = (LUp + cell[index].rhs) / 6.0;
 }
