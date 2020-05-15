@@ -5,8 +5,10 @@ uniform vec3 body_force;
 
 void main() {
     ivec3 grid_pos = ivec3(gl_WorkGroupID);
+    uint index = get_grid_index(grid_pos);
 
-    cell[get_grid_index(grid_pos)].vel += body_force * dt;
+    cell[index].old_vel = cell[index].vel;
+    cell[index].vel += body_force * dt;
 
     // wacky winds
     // cell[get_grid_index(grid_pos)].vel.y += sin(get_world_coord(grid_pos, ivec3(0)).x * 5) * 20 * dt;

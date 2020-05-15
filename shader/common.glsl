@@ -13,6 +13,7 @@ struct GridCell {
     int type;
     vec3 vel;
     float rhs;
+    vec3 old_vel;
     float a_diag;
     float a_x;
     float a_y;
