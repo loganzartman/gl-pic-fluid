@@ -15,14 +15,14 @@ vec3 interpolate_velocity(uint index, ivec3 dimension_offset) {
                 + cell[get_grid_index(base_coord + ivec3(1, 0, 0))].vel * weights.x;
     vec3 vel_x2 = cell[get_grid_index(base_coord + ivec3(0, 1, 0))].vel * (1 - weights.x) 
                 + cell[get_grid_index(base_coord + ivec3(1, 1, 0))].vel * weights.x;
-    vec3 vel_x3 = cell[get_grid_index(base_coord + ivec3(0, 1, 1))].vel * (1 - weights.x) 
-                + cell[get_grid_index(base_coord + ivec3(1, 1, 1))].vel * weights.x;
-    vec3 vel_x4 = cell[get_grid_index(base_coord + ivec3(0, 0, 1))].vel * (1 - weights.x) 
+    vec3 vel_x3 = cell[get_grid_index(base_coord + ivec3(0, 0, 1))].vel * (1 - weights.x) 
                 + cell[get_grid_index(base_coord + ivec3(1, 0, 1))].vel * weights.x;
+    vec3 vel_x4 = cell[get_grid_index(base_coord + ivec3(0, 1, 1))].vel * (1 - weights.x) 
+                + cell[get_grid_index(base_coord + ivec3(1, 1, 1))].vel * weights.x;
     
     // y interpolation
     vec3 vel_y1 = vel_x1 * (1 - weights.y) + vel_x2 * weights.y;
-    vec3 vel_y2 = vel_x4 * (1 - weights.y) + vel_x3 * weights.y;
+    vec3 vel_y2 = vel_x3 * (1 - weights.y) + vel_x4 * weights.y;
 
     // z interpolation
     vec3 vel = vel_y1 * (1 - weights.z) + vel_y2 * weights.z;

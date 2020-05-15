@@ -28,7 +28,7 @@ void build_a() {
             cell[index].a_diag += scale;
         }
     }
-    if (x < grid_dim.x - 1) {
+    if (x < grid_dim.x - 2) {
         // x+ neighbor
         uint i = get_grid_index(ivec3(x+1,y,z));
         if (cell[i].type == FLUID) {
@@ -45,7 +45,7 @@ void build_a() {
             cell[index].a_diag += scale;
         }
     }
-    if (y < grid_dim.y - 1) {
+    if (y < grid_dim.y - 2) {
         // y+ neighbor
         uint i = get_grid_index(ivec3(x,y+1,z));
         if (cell[i].type == FLUID) {
@@ -62,7 +62,7 @@ void build_a() {
             cell[index].a_diag += scale;
         }
     }
-    if (z < grid_dim.z - 1) {
+    if (z < grid_dim.z - 2) {
         // z+ neighbor
         uint i = get_grid_index(ivec3(x,y,z+1));
         if (cell[i].type == FLUID) {

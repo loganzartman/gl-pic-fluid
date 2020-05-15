@@ -64,3 +64,22 @@ int get_grid_index(ivec3 grid_coord) {
     ivec3 clamped_coord = clamp(grid_coord, ivec3(0), grid_dim - ivec3(1));
     return grid_coord.z * grid_dim.y * grid_dim.x + grid_coord.y * grid_dim.x + grid_coord.x;
 }
+
+float grid_pressure(ivec3 grid_coord) {
+    if (!grid_in_bounds(grid_coord)) {
+        return 0;
+    }
+    return cell[get_grid_index(grid_coord)].pressure;
+}
+
+float grid_Dpressure(ivec3 grid_coord, ivec3 dir) {
+    if (!grid_in_bounds(grid_coord)) {
+        return 0;
+    }
+    uint i1 = get_grid_index(grid_coord);
+    if (!grid_in_bounds(grid_coord + dir)) {
+        return -cell[i1].pressure;
+    }
+    uint i2 = get_grid_index(grid_coord + dir);
+    return cell[i2].pressure - cell[i1].pressure;
+}

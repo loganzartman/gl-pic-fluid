@@ -17,7 +17,7 @@ struct Fluid {
     const int num_circle_vertices = 16; // circle detail for particle rendering
 
     const int particle_density = 8;
-    const int grid_size = 16;
+    const int grid_size = 24;
     const glm::ivec3 grid_dimensions{grid_size + 1, grid_size + 1, grid_size + 1};
     const glm::ivec3 grid_cell_dimensions{grid_size, grid_size, grid_size};
     const glm::vec3 bounds_min{-1, -1, -1};
@@ -39,7 +39,9 @@ struct Fluid {
     gfx::Program setup_grid_project_program; // compute A and RHS of pressure equation
     gfx::Program jacobi_iterate_program; // single jacobi iteration to solve for pressure gradient 
     gfx::Program pressure_to_guess_program; // copy pressure to pressure_guess for pressure solve
+    gfx::Program pressure_update_program; // update velocities from pressure gradient
     gfx::Program grid_to_particle_program;
+
     gfx::Program program; // program for particle rendering
     gfx::Program grid_program;
     gfx::Program debug_lines_program;
@@ -79,6 +81,7 @@ struct Fluid {
         setup_grid_project_program.compute({"common.glsl", "setup_project.cs.glsl", "compute_divergence.cs.glsl", "build_a.cs.glsl"}).compile();
         jacobi_iterate_program.compute({"common.glsl", "jacobi_iterate.cs.glsl"}).compile();
         pressure_to_guess_program.compute({"common.glsl", "pressure_to_guess.cs.glsl"}).compile();
+        pressure_update_program.compute({"common.glsl", "pressure_update.cs.glsl"}).compile();
         particle_advect_program.compute({"common.glsl", "particle_advect.cs.glsl"}).compile();
         program.vertex({"particles.vs.glsl"}).fragment({"lighting.glsl", "particles.fs.glsl"}).compile();
         grid_program.vertex({"common.glsl", "grid.vs.glsl"}).geometry({"common.glsl", "grid.gs.glsl"}).fragment({"grid.fs.glsl"}).compile();
@@ -94,7 +97,7 @@ struct Fluid {
                     const glm::ivec3 gpos{gx, gy, gz};
                     const glm::vec3 cell_pos = get_world_coord(gpos);
 
-                    if (gx < grid_cell_dimensions.x / 3 and gy < grid_cell_dimensions.y * 2 / 3) {
+                    if (gy < grid_cell_dimensions.y * 2 / 3) {
                         initial_grid.emplace_back(GridCell{
                             cell_pos,
                             glm::vec3(0),
@@ -126,8 +129,8 @@ struct Fluid {
         //     glm::vec3(0.005, 0.01, 0.01),
         //     glm::vec4(1, 0, 1, 1)
         // });
-        particle_ssbo.bind_base(0).set_data(initial_particles);
-        grid_ssbo.bind_base(1).set_data(initial_grid);
+        particle_ssbo.bind_base(0).set_data(initial_particles, GL_DYNAMIC_READ);
+        grid_ssbo.bind_base(1).set_data(initial_grid, GL_DYNAMIC_COPY);
         std::cerr << "Cell count: " << initial_grid.size() << std::endl;
         std::cerr << "Particle count: " << initial_particles.size() << std::endl;
 
@@ -154,12 +157,12 @@ struct Fluid {
     }
 
     int get_grid_index(const glm::ivec3& grid_coord) {
-        const glm::ivec3 clamped_coord = glm::clamp(grid_coord, glm::ivec3(0), grid_dimensions);
+        const glm::ivec3 clamped_coord = glm::clamp(grid_coord, glm::ivec3(0), grid_dimensions - glm::ivec3(1));
         return clamped_coord.z * grid_dimensions.x * grid_dimensions.y + clamped_coord.y * grid_dimensions.x + clamped_coord.x;
     }
 
     void particle_to_grid() {
-        const auto particles = particle_ssbo.map_buffer<Particle>();
+        const auto particles = particle_ssbo.map_buffer_readonly<Particle>();
         auto grid = grid_ssbo.map_buffer<GridCell>();
 
         // clear grid values
@@ -259,8 +262,8 @@ struct Fluid {
         setup_grid_project_program.disuse();
     }
 
-    void jacobi_solve(float dt) {
-        const int iters = 30;
+    void jacobi_solve() {
+        const int iters = 50;
 
         jacobi_iterate_program.use();
         glUniform3fv(jacobi_iterate_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
@@ -278,13 +281,29 @@ struct Fluid {
             ssbo_barrier();
             jacobi_iterate_program.use();
             glDispatchCompute(grid_dimensions.x, grid_dimensions.y, grid_dimensions.z);
+
             ssbo_barrier();
             pressure_to_guess_program.use();
             glDispatchCompute(grid_dimensions.x, grid_dimensions.y, grid_dimensions.z);
         }
     }
 
+    void pressure_update(float dt) {
+        ssbo_barrier();
+        pressure_update_program.use();
+        glUniform1f(pressure_update_program.uniform_loc("dt"), dt);
+        glUniform3fv(pressure_update_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
+        glUniform3fv(pressure_update_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
+        glUniform3iv(pressure_update_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
+        pressure_update_program.validate();
+        glDispatchCompute(grid_dimensions.x, grid_dimensions.y, grid_dimensions.z);
+        pressure_update_program.disuse();
+    }
+
     void grid_project(float dt) {
+        setup_grid_project(dt);
+        jacobi_solve();
+        pressure_update(dt);
     }
 
     void grid_to_particle() {
@@ -310,16 +329,14 @@ struct Fluid {
 
     void ssbo_barrier() {
         // https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glMemoryBarrier.xhtml
-        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        glMemoryBarrier(GL_ALL_BARRIER_BITS);
     }
 
     void step() {
         const float dt = 0.01;
         particle_to_grid();
         apply_body_forces(dt);
-        setup_grid_project(dt);
-        jacobi_solve(dt);
-        // grid_project(dt);
+        grid_project(dt);
         grid_to_particle();
         particle_advect(dt);
     }
@@ -337,13 +354,14 @@ struct Fluid {
         program.disuse();
     }
 
-    void draw_grid(const glm::mat4& projection, const glm::mat4& view) {
+    void draw_grid(const glm::mat4& projection, const glm::mat4& view, int display_mode) {
         grid_program.use();
         glUniform3fv(grid_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
         glUniform3fv(grid_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
         glUniform3iv(grid_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
         glUniformMatrix4fv(grid_program.uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(grid_program.uniform_loc("view"), 1, GL_FALSE, glm::value_ptr(view));
+        glUniform1i(grid_program.uniform_loc("display_mode"), display_mode);
         grid_vao.bind();
         glPointSize(16.0);
         glDrawArrays(GL_POINTS, 0, grid_ssbo.length());

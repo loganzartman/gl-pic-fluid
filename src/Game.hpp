@@ -34,6 +34,7 @@ public:
     bool do_step = false;
     bool grid_visible = false;
     bool particles_visible = true;
+    int grid_display_mode = 0;
 
     Box box;    
 
@@ -90,7 +91,7 @@ public:
         }
 
         if (grid_visible)
-            fluid.draw_grid(projection, view);
+            fluid.draw_grid(projection, view, grid_display_mode);
         if (particles_visible)
             fluid.draw_particles(projection, view, viewport);
         fluid.draw_debug_lines(projection, view);

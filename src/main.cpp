@@ -54,6 +54,22 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
         if (key == GLFW_KEY_S) {
             game->do_step = true;
         }
+
+        if (key == GLFW_KEY_1) {
+            game->grid_display_mode = 0;
+        }
+        if (key == GLFW_KEY_2) {
+            game->grid_display_mode = 1;
+        }
+        if (key == GLFW_KEY_3) {
+            game->grid_display_mode = 2;
+        }
+        if (key == GLFW_KEY_4) {
+            game->grid_display_mode = 3;
+        }
+        if (key == GLFW_KEY_5) {
+            game->grid_display_mode = 4;
+        }
     }
 }
 

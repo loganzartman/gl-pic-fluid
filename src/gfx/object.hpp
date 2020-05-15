@@ -82,25 +82,25 @@ private:
         }
     };
 
-    template <typename T>
-    std::unique_ptr<T[], GlMappedBufferDeleter> unsafe_map_buffer(GLenum access) const {
-        if (!id)
-            throw std::runtime_error("Buffer not initialized.");
-        bind();
-        std::unique_ptr<T[], GlMappedBufferDeleter> ptr(static_cast<T*>(glMapBuffer(target, access)), GlMappedBufferDeleter{target, id});
-        unbind();
-        return std::move(ptr);
-    }
-
 public:
     template <typename T>
     std::unique_ptr<T[], GlMappedBufferDeleter> map_buffer() {
-        return unsafe_map_buffer<T>(GL_READ_WRITE);
+        if (!id)
+            throw std::runtime_error("Buffer not initialized.");
+        bind();
+        std::unique_ptr<T[], GlMappedBufferDeleter> ptr(static_cast<T*>(glMapBuffer(target, GL_READ_WRITE)), GlMappedBufferDeleter{target, id});
+        unbind();
+        return ptr;
     }
 
     template <typename T>
-    const std::unique_ptr<T[], GlMappedBufferDeleter> map_buffer() const {
-        return const_cast<std::unique_ptr<const T[], GlMappedBufferDeleter>>(unsafe_map_buffer<T>(GL_READ_ONLY));
+    const std::unique_ptr<T[], GlMappedBufferDeleter> map_buffer_readonly() const {
+        if (!id)
+            throw std::runtime_error("Buffer not initialized.");
+        bind();
+        std::unique_ptr<T[], GlMappedBufferDeleter> ptr(static_cast<T*>(glMapBuffer(target, GL_READ_ONLY)), GlMappedBufferDeleter{target, id});
+        unbind();
+        return ptr;
     }
 };
 

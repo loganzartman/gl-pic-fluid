@@ -145,8 +145,6 @@ private:
             std::vector<GLchar> info_log(max_length);
             glGetShaderInfoLog(shader, max_length, NULL, &info_log[0]);
 
-            // The program is useless now. So delete it.
-            glDeleteProgram(shader);
             const std::string err = "GL Program Validation error: \n";
             throw std::runtime_error(err + info_log.data());
 		}
@@ -163,8 +161,6 @@ private:
             std::vector<GLchar> info_log(max_length);
             glGetProgramInfoLog(id, max_length, NULL, &info_log[0]);
 
-            // The program is useless now. So delete it.
-            glDeleteProgram(shader);
             const std::string err = "GLSL linking error for program: ";
             throw std::runtime_error(err + name + "\n" + info_log.data());
 		}

@@ -12,7 +12,7 @@ out vec3 vs_vel;
 
 uniform mat4 projection;
 uniform mat4 view;
-const int display_mode=2;
+uniform int display_mode;
 
 void main() {
     vs_display_mode = display_mode;
@@ -21,19 +21,20 @@ void main() {
     vs_color = vec3(1.0, 0, 1.0);
 
     if (display_mode == 0) {
+        if (type == AIR) {vs_color = vec3(1.0, 0.0, 0.0);}
         if (type == SOLID) {vs_color = vec3(0.0, 1.0, 0.0);}
         if (type == FLUID) {vs_color = vec3(0.0, 0.0, 1.0);}
     }
     if (display_mode == 1) {
-        vs_color = vec3(abs(vel));
+        vs_color = vec3(abs(vel)) * 10;
     }
     if (display_mode == 2) {
-        vs_color = vec3(abs(rhs));
+        vs_color = vec3(max(0, -rhs), max(0, rhs), 0);
     }
     if (display_mode == 3) {
-        vs_color = vec3(abs(a.yzw));
+        vs_color = vec3(abs(a.xyz));
     }
     if (display_mode == 4) {
-        vs_color = vec3(abs(pressure));
+        vs_color = isnan(pressure) ? vec3(1, 0, 1) : vec3(max(0, -pressure), max(0, pressure), 0);
     }
 }
