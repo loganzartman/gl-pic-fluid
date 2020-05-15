@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdlib>
 #include <array>
 #include <string>
 #include <vector>
@@ -41,6 +42,7 @@ public:
     Game(GLFWwindow* window) : window(window) {}
 
     void init() {
+        srand(time(0));
         fluid.init();
     }
 
