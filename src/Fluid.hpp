@@ -343,39 +343,47 @@ struct Fluid {
         setup_grid_project(dt);
         ssbo_barrier();
         auto grid = grid_ssbo.map_buffer<GridCell>();
+        const glm::ivec3& dim = grid_cell_dimensions;
+        const int n = glm::compMul(dim);
+        auto in_bounds = [&](const glm::ivec3& c) {
+            return c.x >= 0 and c.y >= 0 and c.z >= 0 and c.x < dim.x and c.y < dim.y and c.z < dim.z;
+        };
+        auto index = [&](const glm::ivec3& c){
+            return c.x * (dim.x * dim.y) + c.y * dim.x + c.z;
+        };
         
         Eigen::SparseMatrix<float> A;
-        Eigen::VectorXf b(grid_ssbo.length());
+        Eigen::VectorXf b(n);
 
         std::vector<Eigen::Triplet<float>> triplets;
 
         auto add_neighbor = [&](const glm::ivec3& c, int dx, int dy, int dz){
             const glm::ivec3 offset = glm::ivec3(dx, dy, dz);
-            if (grid_in_bounds(c + offset)) {
+            if (in_bounds(c + offset)) {
                 int i = get_grid_index(c);
-                int j = get_grid_index(c + offset); 
+                int io = get_grid_index(c + offset);
                 float f = 0;
                 if (dx < 0)
-                    f = grid[i].a_x;
+                    f = grid[io].a_x;
                 else if (dx > 0)
-                    f = -grid[i].a_x;
+                    f = grid[i].a_x;
                 else if (dy < 0)
-                    f = grid[i].a_y;
+                    f = grid[io].a_y;
                 else if (dy > 0)
-                    f = -grid[i].a_y;
+                    f = grid[i].a_y;
                 else if (dz < 0)
-                    f = grid[i].a_z;
+                    f = grid[io].a_z;
                 else if (dz > 0)
-                    f = -grid[i].a_z;
+                    f = grid[i].a_z;
                 else
                     f = grid[i].a_diag;
-                triplets.emplace_back(i, j, f);
+                triplets.emplace_back(index(c), index(c + offset), f);
             }
         };
 
-        for (int x = 0; x < grid_dimensions.x; ++x) {
-            for (int y = 0; y < grid_dimensions.y; ++y) {
-                for (int z = 0; z < grid_dimensions.z; ++z) {
+        for (int x = 0; x < dim.x; ++x) {
+            for (int y = 0; y < dim.y; ++y) {
+                for (int z = 0; z < dim.z; ++z) {
                     const glm::ivec3 coord = glm::ivec3(x,y,z);
                     add_neighbor(coord, -1, 0, 0);
                     add_neighbor(coord, 0, -1, 0);
@@ -384,24 +392,28 @@ struct Fluid {
                     add_neighbor(coord, 0, 1, 0);
                     add_neighbor(coord, 0, 0, 1);
                     add_neighbor(coord, 0, 0, 0);
-                    const int i = get_grid_index(coord);
-                    b(i) = grid[i].rhs;
+                    b(index(coord)) = grid[get_grid_index(coord)].rhs;
                 }
             }
         }
 
-        A.resize(grid_ssbo.length(), grid_ssbo.length());
+        A.resize(n, n);
         A.setFromTriplets(triplets.begin(), triplets.end());
 
-        Eigen::ConjugateGradient<Eigen::SparseMatrix<float>> solver;
+        Eigen::ConjugateGradient<Eigen::SparseMatrix<float>, 1, Eigen::DiagonalPreconditioner<float>> solver;
         solver.compute(A);
         Eigen::VectorXf p = solver.solve(b);
         if (solver.info() != Eigen::Success) {
-            // throw std::runtime_error("Didn't converge");
+            throw std::runtime_error("Didn't converge");
         }
 
-        for (int i = 0; i < grid_ssbo.length(); ++i) {
-            grid[i].pressure = p(i);
+        for (int x = 0; x < dim.x; ++x) {
+            for (int y = 0; y < dim.y; ++y) {
+                for (int z = 0; z < dim.z; ++z) {
+                    const glm::ivec3 coord = glm::ivec3(x, y, z);
+                    grid[get_grid_index(coord)].pressure = p(index(coord));
+                }
+            }
         }
     }
 
