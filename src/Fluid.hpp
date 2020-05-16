@@ -293,7 +293,7 @@ struct Fluid {
     }
 
     void jacobi_solve(float dt) {
-        const int iters = 400;
+        const int iters = 40;
 
         jacobi_iterate_program.use();
         glUniform1f(setup_grid_project_program.uniform_loc("dt"), dt);
@@ -365,7 +365,7 @@ struct Fluid {
     }
 
     void step() {
-        const float dt = 0.02;
+        const float dt = 0.01;
         particle_to_grid();
         extrapolate();
         apply_body_forces(dt);
