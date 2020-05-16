@@ -7,6 +7,8 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/component_wise.hpp>
 #include <glm/gtx/vec_swizzle.hpp>
+#include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/Sparse>
 #include "GridCell.hpp"
 #include "Particle.hpp"
 #include "DebugLine.hpp"
@@ -335,7 +337,72 @@ struct Fluid {
     void grid_project(float dt) {
         setup_grid_project(dt);
         jacobi_solve(dt);
-        pressure_update(dt);
+    }
+
+    void grid_project_eigen(float dt) {
+        setup_grid_project(dt);
+        ssbo_barrier();
+        auto grid = grid_ssbo.map_buffer<GridCell>();
+        
+        Eigen::SparseMatrix<float> A;
+        Eigen::VectorXf b(grid_ssbo.length());
+
+        std::vector<Eigen::Triplet<float>> triplets;
+
+        auto add_neighbor = [&](const glm::ivec3& c, int dx, int dy, int dz){
+            const glm::ivec3 offset = glm::ivec3(dx, dy, dz);
+            if (grid_in_bounds(c + offset)) {
+                int i = get_grid_index(c);
+                int j = get_grid_index(c + offset); 
+                float f = 0;
+                if (dx < 0)
+                    f = grid[i].a_x;
+                else if (dx > 0)
+                    f = -grid[i].a_x;
+                else if (dy < 0)
+                    f = grid[i].a_y;
+                else if (dy > 0)
+                    f = -grid[i].a_y;
+                else if (dz < 0)
+                    f = grid[i].a_z;
+                else if (dz > 0)
+                    f = -grid[i].a_z;
+                else
+                    f = grid[i].a_diag;
+                triplets.emplace_back(i, j, f);
+            }
+        };
+
+        for (int x = 0; x < grid_dimensions.x; ++x) {
+            for (int y = 0; y < grid_dimensions.y; ++y) {
+                for (int z = 0; z < grid_dimensions.z; ++z) {
+                    const glm::ivec3 coord = glm::ivec3(x,y,z);
+                    add_neighbor(coord, -1, 0, 0);
+                    add_neighbor(coord, 0, -1, 0);
+                    add_neighbor(coord, 0, 0, -1);
+                    add_neighbor(coord, 1, 0, 0);
+                    add_neighbor(coord, 0, 1, 0);
+                    add_neighbor(coord, 0, 0, 1);
+                    add_neighbor(coord, 0, 0, 0);
+                    const int i = get_grid_index(coord);
+                    b(i) = grid[i].rhs;
+                }
+            }
+        }
+
+        A.resize(grid_ssbo.length(), grid_ssbo.length());
+        A.setFromTriplets(triplets.begin(), triplets.end());
+
+        Eigen::ConjugateGradient<Eigen::SparseMatrix<float>> solver;
+        solver.compute(A);
+        Eigen::VectorXf p = solver.solve(b);
+        if (solver.info() != Eigen::Success) {
+            // throw std::runtime_error("Didn't converge");
+        }
+
+        for (int i = 0; i < grid_ssbo.length(); ++i) {
+            grid[i].pressure = p(i);
+        }
     }
 
     void grid_to_particle() {
@@ -344,7 +411,7 @@ struct Fluid {
         glUniform3fv(grid_to_particle_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
         glUniform3fv(grid_to_particle_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
         glUniform3iv(grid_to_particle_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
-        glUniform1f(grid_to_particle_program.uniform_loc("pic_flip_blend"), 0.);
+        glUniform1f(grid_to_particle_program.uniform_loc("pic_flip_blend"), 0.95);
         grid_to_particle_program.validate();
         glDispatchCompute(particle_ssbo.length(), 1, 1);
         grid_to_particle_program.disuse();
@@ -370,7 +437,9 @@ struct Fluid {
         particle_to_grid();
         // extrapolate();
         apply_body_forces(dt);
-        grid_project(dt);
+        // grid_project(dt);
+        grid_project_eigen(dt);
+        pressure_update(dt);
         grid_to_particle();
         particle_advect(dt);
     }
