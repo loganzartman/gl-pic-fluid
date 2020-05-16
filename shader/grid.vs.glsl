@@ -7,6 +7,7 @@ layout (location=5) in float pressure;
 layout (location=6) in int vel_unknown;
 
 flat out int vs_display_mode;
+flat out int vs_discard;
 out vec3 vs_pos;
 out vec3 vs_color;
 out vec3 vs_vel;
@@ -16,6 +17,7 @@ uniform mat4 view;
 uniform int display_mode;
 
 void main() {
+    vs_discard = 0;
     vs_display_mode = display_mode;
     vs_pos = pos;
     vs_vel = vel;
@@ -30,12 +32,18 @@ void main() {
         vs_color = vec3(abs(vel));
     }
     if (display_mode == 2) {
+        if (rhs == 0)
+            vs_discard = 1;
         vs_color = vec3(max(0, -rhs), max(0, rhs), 0);
     }
     if (display_mode == 3) {
+        if (length(a) == 0)
+            vs_discard = 1;
         vs_color = vec3(abs(a.xyz));
     }
     if (display_mode == 4) {
+        if (pressure == 0)
+            vs_discard = 1;
         vs_color = isnan(pressure) ? vec3(1, 0, 1) : vec3(max(0, -pressure), max(0, pressure), 0);
     }
     if (display_mode == 5) {

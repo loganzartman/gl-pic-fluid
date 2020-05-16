@@ -2,9 +2,11 @@ layout (points) in;
 layout (points, max_vertices=4) out;
 
 flat in int vs_display_mode[];
+flat in int vs_discard[];
 in vec3 vs_pos[];
 in vec3 vs_color[];
 in vec3 vs_vel[];
+flat out int gs_discard;
 out vec3 gs_color;
 
 uniform mat4 projection;
@@ -14,6 +16,7 @@ void main() {
     const float len = 0.1;
     uint id = gl_InvocationID;
     mat4 pv = projection * view;
+    gs_discard = vs_discard[0];
 
     if (false && vs_display_mode[0] == 1) {
         // face velocities
