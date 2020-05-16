@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <stdexcept>
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/random.hpp>
@@ -17,7 +18,7 @@ struct Fluid {
     const int num_circle_vertices = 16; // circle detail for particle rendering
 
     const int particle_density = 8;
-    const int grid_size = 24;
+    const int grid_size = 16;
     const glm::ivec3 grid_dimensions{grid_size + 1, grid_size + 1, grid_size + 1};
     const glm::ivec3 grid_cell_dimensions{grid_size, grid_size, grid_size};
     const glm::vec3 bounds_min{-1, -1, -1};
@@ -293,10 +294,10 @@ struct Fluid {
     }
 
     void jacobi_solve(float dt) {
-        const int iters = 40;
+        const int iters = 50;
 
         jacobi_iterate_program.use();
-        glUniform1f(setup_grid_project_program.uniform_loc("dt"), dt);
+        glUniform1f(jacobi_iterate_program.uniform_loc("dt"), dt);
         glUniform3fv(jacobi_iterate_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
         glUniform3fv(jacobi_iterate_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
         glUniform3iv(jacobi_iterate_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
@@ -365,9 +366,9 @@ struct Fluid {
     }
 
     void step() {
-        const float dt = 0.01;
+        const float dt = 0.03;
         particle_to_grid();
-        extrapolate();
+        // extrapolate();
         apply_body_forces(dt);
         grid_project(dt);
         grid_to_particle();
