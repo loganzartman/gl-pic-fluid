@@ -20,15 +20,15 @@ void main() {
 
     if (grid_pos.x > 0) {
         uint j = get_grid_index(grid_pos + ivec3(-1, 0, 0));
-        L_Up -= cell[index].a_x * cell[j].pressure_guess;
+        L_Up += cell[j].a_x * cell[j].pressure_guess;
     }
     if (grid_pos.y > 0) {
         uint j = get_grid_index(grid_pos + ivec3(0, -1, 0));
-        L_Up -= cell[index].a_y * cell[j].pressure_guess;
+        L_Up += cell[j].a_y * cell[j].pressure_guess;
     }
     if (grid_pos.z > 0) {
         uint j = get_grid_index(grid_pos + ivec3(0, 0, -1));
-        L_Up -= cell[index].a_z * cell[j].pressure_guess;
+        L_Up += cell[j].a_z * cell[j].pressure_guess;
     }
 
     if (grid_pos.x < grid_dim.x - 2) {

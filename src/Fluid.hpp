@@ -21,7 +21,7 @@ struct Fluid {
     const int num_circle_vertices = 16; // circle detail for particle rendering
 
     const int particle_density = 8;
-    const int grid_size = 25;
+    const int grid_size = 32;
     const glm::ivec3 grid_dimensions{grid_size + 1, grid_size + 1, grid_size + 1};
     const glm::ivec3 grid_cell_dimensions{grid_size, grid_size, grid_size};
     const glm::vec3 bounds_min{-1, -1, -1};
@@ -352,20 +352,15 @@ struct Fluid {
         setup_grid_project_program.disuse();
     }
 
-    void jacobi_solve(float dt) {
+    void pressure_solve() {
         const int iters = 50;
 
         jacobi_iterate_program.use();
-        glUniform1f(jacobi_iterate_program.uniform_loc("dt"), dt);
-        glUniform3fv(jacobi_iterate_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
-        glUniform3fv(jacobi_iterate_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
-        glUniform3iv(jacobi_iterate_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
+        set_common_uniforms(jacobi_iterate_program);
         jacobi_iterate_program.validate();
 
         pressure_to_guess_program.use();
-        glUniform3fv(pressure_to_guess_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
-        glUniform3fv(pressure_to_guess_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
-        glUniform3iv(pressure_to_guess_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
+        set_common_uniforms(pressure_to_guess_program);
         pressure_to_guess_program.validate();
 
         for (int i = 0; i < iters; ++i) {
@@ -391,13 +386,7 @@ struct Fluid {
         pressure_update_program.disuse();
     }
 
-    void grid_project(float dt) {
-        setup_grid_project(dt);
-        jacobi_solve(dt);
-    }
-
-    void grid_project_eigen(float dt) {
-        setup_grid_project(dt);
+    void pressure_solve_eigen() {
         ssbo_barrier();
         auto grid = grid_ssbo.map_buffer<GridCell>();
         const glm::ivec3& dim = grid_cell_dimensions;
@@ -480,7 +469,7 @@ struct Fluid {
         glUniform3fv(grid_to_particle_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
         glUniform3fv(grid_to_particle_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
         glUniform3iv(grid_to_particle_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
-        glUniform1f(grid_to_particle_program.uniform_loc("pic_flip_blend"), 0.8);
+        glUniform1f(grid_to_particle_program.uniform_loc("pic_flip_blend"), 0.92);
         grid_to_particle_program.validate();
         glDispatchCompute(particle_ssbo.length(), 1, 1);
         grid_to_particle_program.disuse();
@@ -506,8 +495,8 @@ struct Fluid {
         particle_to_grid();
         // extrapolate();
         apply_body_forces(dt);
-        // grid_project(dt);
-        grid_project_eigen(dt);
+        setup_grid_project(dt);
+        pressure_solve();
         pressure_update(dt);
         grid_to_particle();
         particle_advect(dt);
