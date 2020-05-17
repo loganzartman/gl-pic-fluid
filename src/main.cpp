@@ -54,6 +54,9 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
         if (key == GLFW_KEY_S) {
             game->do_step = true;
         }
+        if (key == GLFW_KEY_R) {
+            game->fluid.init_ssbos();
+        }
 
         if (key == GLFW_KEY_1) {
             game->grid_display_mode = 0;
