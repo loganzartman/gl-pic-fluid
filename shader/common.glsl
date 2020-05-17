@@ -29,6 +29,12 @@ struct DebugLine {
     vec3 b;
 };
 
+struct P2GTransfer {
+    int u;
+    int v;
+    int w;
+};
+
 layout(std430, binding=0) restrict buffer ParticleBlock {
     Particle particle[];
 };
@@ -39,6 +45,10 @@ layout(std430, binding=1) restrict buffer GridBlock {
 
 layout(std430, binding=2) restrict buffer DebugLinesBlock {
     DebugLine debug_lines[];
+};
+
+layout(std430, binding=3) coherent buffer P2GTransferBlock {
+    P2GTransfer p2g_transfer[];
 };
 
 const float density = 1; // kg/m^3
@@ -67,21 +77,12 @@ int get_grid_index(ivec3 grid_coord) {
     return grid_coord.z * grid_dim.y * grid_dim.x + grid_coord.y * grid_dim.x + grid_coord.x;
 }
 
-float grid_pressure(ivec3 grid_coord) {
-    if (!grid_in_bounds(grid_coord)) {
-        return 0;
-    }
-    return cell[get_grid_index(grid_coord)].pressure;
+int FIXED_SCALE = 1000000;
+
+int float2fix(float f) {
+    return int(round(f * FIXED_SCALE));
 }
 
-float grid_Dpressure(ivec3 grid_coord, ivec3 dir) {
-    if (!grid_in_bounds(grid_coord)) {
-        return 0;
-    }
-    uint i1 = get_grid_index(grid_coord);
-    if (!grid_in_bounds(grid_coord + dir)) {
-        return -cell[i1].pressure;
-    }
-    uint i2 = get_grid_index(grid_coord + dir);
-    return cell[i2].pressure - cell[i1].pressure;
+float fix2float(int fix) {
+    return fix / float(FIXED_SCALE);
 }

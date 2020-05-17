@@ -12,6 +12,7 @@
 #include "GridCell.hpp"
 #include "Particle.hpp"
 #include "DebugLine.hpp"
+#include "P2GTransfer.hpp"
 #include "util.hpp"
 #include "gfx/object.hpp"
 #include "gfx/program.hpp"
@@ -31,12 +32,15 @@ struct Fluid {
 
     gfx::Buffer particle_ssbo{GL_SHADER_STORAGE_BUFFER}; // particle data storage
     gfx::Buffer grid_ssbo{GL_SHADER_STORAGE_BUFFER}; // grid data storage
+    gfx::Buffer transfer_ssbo{GL_SHADER_STORAGE_BUFFER}; // p2g transfer storage buffer
     gfx::Buffer circle_verts{GL_ARRAY_BUFFER};
     gfx::Buffer debug_lines_ssbo{GL_SHADER_STORAGE_BUFFER};
     gfx::VAO vao;
     gfx::VAO grid_vao;
     gfx::VAO debug_lines_vao; // used for drawing colored lines for debugging
 
+    gfx::Program p2g_accumulate_program; // accumulate new grid velocities from particles
+    gfx::Program p2g_apply_program; // copy new grid velocities to grid data
     gfx::Program particle_advect_program; // compute shader to operate on particles SSBO
     gfx::Program body_forces_program; // compute shader to apply body forces on grid
     gfx::Program extrapolate_program; // extrapolate grid velocities by one cell
@@ -45,7 +49,7 @@ struct Fluid {
     gfx::Program jacobi_iterate_program; // single jacobi iteration to solve for pressure gradient 
     gfx::Program pressure_to_guess_program; // copy pressure to pressure_guess for pressure solve
     gfx::Program pressure_update_program; // update velocities from pressure gradient
-    gfx::Program grid_to_particle_program;
+    gfx::Program grid_to_particle_program; // transfer grid velocities to particles
 
     gfx::Program program; // program for particle rendering
     gfx::Program grid_program;
@@ -82,6 +86,8 @@ struct Fluid {
             .bind_attrib(debug_lines_ssbo, offsetof(DebugLine, b), sizeof(DebugLine), 3, GL_FLOAT, gfx::NOT_INSTANCED)
             .bind_attrib(debug_lines_ssbo, offsetof(DebugLine, color), sizeof(DebugLine), 4, GL_FLOAT, gfx::NOT_INSTANCED);
         
+        p2g_accumulate_program.compute({"common.glsl", "p2g_accumulate.cs.glsl"}).compile();
+        p2g_apply_program.compute({"common.glsl", "p2g_apply.cs.glsl"}).compile();
         grid_to_particle_program.compute({"common.glsl", "grid_to_particle.cs.glsl"}).compile();
         extrapolate_program.compute({"common.glsl", "extrapolate.cs.glsl"}).compile();
         set_vel_known_program.compute({"common.glsl", "set_vel_known.cs.glsl"}).compile();
@@ -99,11 +105,14 @@ struct Fluid {
     void init_ssbos() {
         std::vector<GridCell> initial_grid;
         std::vector<Particle> initial_particles;
+        std::vector<P2GTransfer> initial_transfer;
         for (int gz = 0; gz < grid_dimensions.z; ++gz) {
             for (int gy = 0; gy < grid_dimensions.y; ++gy) {
                 for (int gx = 0; gx < grid_dimensions.x; ++gx) {
                     const glm::ivec3 gpos{gx, gy, gz};
                     const glm::vec3 cell_pos = get_world_coord(gpos);
+
+                    initial_transfer.emplace_back(P2GTransfer());
 
                     const glm::ivec3& d = grid_cell_dimensions;
                     if (gx < d.x / 2 and gy < d.y / 2) {
@@ -149,6 +158,8 @@ struct Fluid {
         debug_lines.push_back(DebugLine({0, 0, 0}, {0, 0, 0.1}, {0, 0, 1, 1})); // z axis
         debug_lines_ssbo.bind_base(2).set_data(debug_lines); 
 
+        transfer_ssbo.bind_base(3).set_data(initial_transfer, GL_DYNAMIC_COPY);
+
         std::cout << "Size of debug lines buffer " << debug_lines_ssbo.length() << " (" << debug_lines_ssbo.size() << " bytes)" << std::endl;
     }
 
@@ -170,7 +181,13 @@ struct Fluid {
         return clamped_coord.z * grid_dimensions.x * grid_dimensions.y + clamped_coord.y * grid_dimensions.x + clamped_coord.x;
     }
 
-    void particle_to_grid() {
+    void set_common_uniforms(gfx::Program& program) {
+        glUniform3fv(program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
+        glUniform3fv(program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
+        glUniform3iv(program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
+    }
+
+    void particle_to_grid_cpu() {
         const auto particles = particle_ssbo.map_buffer_readonly<Particle>();
         auto grid = grid_ssbo.map_buffer<GridCell>();
 
@@ -248,6 +265,27 @@ struct Fluid {
             if (grid[i].vel.z != 0)
                 grid[i].vel.z /= cell_weights[i].z;
         }
+    }
+
+    void particle_to_grid() {
+        constexpr static int group_size = 1024;
+        p2g_accumulate_program.use();
+        set_common_uniforms(p2g_accumulate_program);
+
+        // accumulate
+        for (int i = 0; i < particle_ssbo.length() / group_size + 1; ++i) {
+            glUniform1i(p2g_accumulate_program.uniform_loc("start_index"), i * group_size);
+            p2g_accumulate_program.validate();
+            ssbo_barrier();
+            glDispatchCompute(1, 1, 1);
+        } 
+
+        // copy transfer accumulators to grid velocities
+        ssbo_barrier();
+        p2g_apply_program.use();
+        set_common_uniforms(p2g_apply_program);
+        glDispatchCompute(grid_dimensions.x, grid_dimensions.y, grid_dimensions.z);
+        p2g_apply_program.disuse();
     }
 
     void extrapolate() {

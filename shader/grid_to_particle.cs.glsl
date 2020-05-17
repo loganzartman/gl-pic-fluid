@@ -2,6 +2,18 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 uniform float pic_flip_blend;
 
+ivec3 offset_clamped(ivec3 base_coord, ivec3 dimension_offset) {
+    // apply an offset (in one basis direction) and clamp to MAC grid
+    ivec3 max_size = grid_cell_dim;
+    if (dimension_offset.x > 0)
+        max_size.x = grid_dim.x;
+    if (dimension_offset.y > 0)
+        max_size.y = grid_dim.y;
+    if (dimension_offset.z > 0)
+        max_size.z = grid_dim.z;
+    return clamp(base_coord + dimension_offset, ivec3(0), max_size - ivec3(1));
+}
+
 vec3 lerp_vel(uint index, ivec3 dimension_offset) {
     // interpolates velocity from 8 nearby grid corners
     // dimension_offset should correspond to the component of velocity being interpolated
@@ -13,14 +25,14 @@ vec3 lerp_vel(uint index, ivec3 dimension_offset) {
 
     // trilinearly interpolate 8 nearby grid velocity values to particle
     // x interpolation (gets values from all 8 grid corners)
-    vec3 vel_x1 = cell[get_grid_index(base_coord + ivec3(0, 0, 0))].vel * (1 - weights.x) 
-                + cell[get_grid_index(base_coord + ivec3(1, 0, 0))].vel * weights.x;
-    vec3 vel_x2 = cell[get_grid_index(base_coord + ivec3(0, 1, 0))].vel * (1 - weights.x) 
-                + cell[get_grid_index(base_coord + ivec3(1, 1, 0))].vel * weights.x;
-    vec3 vel_x3 = cell[get_grid_index(base_coord + ivec3(0, 0, 1))].vel * (1 - weights.x) 
-                + cell[get_grid_index(base_coord + ivec3(1, 0, 1))].vel * weights.x;
-    vec3 vel_x4 = cell[get_grid_index(base_coord + ivec3(0, 1, 1))].vel * (1 - weights.x) 
-                + cell[get_grid_index(base_coord + ivec3(1, 1, 1))].vel * weights.x;
+    vec3 vel_x1 = cell[get_grid_index(offset_clamped(base_coord, ivec3(0, 0, 0)))].vel * (1 - weights.x) 
+                + cell[get_grid_index(offset_clamped(base_coord, ivec3(1, 0, 0)))].vel * weights.x;
+    vec3 vel_x2 = cell[get_grid_index(offset_clamped(base_coord, ivec3(0, 1, 0)))].vel * (1 - weights.x) 
+                + cell[get_grid_index(offset_clamped(base_coord, ivec3(1, 1, 0)))].vel * weights.x;
+    vec3 vel_x3 = cell[get_grid_index(offset_clamped(base_coord, ivec3(0, 0, 1)))].vel * (1 - weights.x) 
+                + cell[get_grid_index(offset_clamped(base_coord, ivec3(1, 0, 1)))].vel * weights.x;
+    vec3 vel_x4 = cell[get_grid_index(offset_clamped(base_coord, ivec3(0, 1, 1)))].vel * (1 - weights.x) 
+                + cell[get_grid_index(offset_clamped(base_coord, ivec3(1, 1, 1)))].vel * weights.x;
     
     // y interpolation
     vec3 vel_y1 = vel_x1 * (1 - weights.y) + vel_x2 * weights.y;
@@ -42,14 +54,14 @@ vec3 lerp_old_vel(uint index, ivec3 dimension_offset) {
 
     // trilinearly interpolate 8 nearby grid velocity values to particle
     // x interpolation (gets values from all 8 grid corners)
-    vec3 vel_x1 = cell[get_grid_index(base_coord + ivec3(0, 0, 0))].old_vel * (1 - weights.x) 
-                + cell[get_grid_index(base_coord + ivec3(1, 0, 0))].old_vel * weights.x;
-    vec3 vel_x2 = cell[get_grid_index(base_coord + ivec3(0, 1, 0))].old_vel * (1 - weights.x) 
-                + cell[get_grid_index(base_coord + ivec3(1, 1, 0))].old_vel * weights.x;
-    vec3 vel_x3 = cell[get_grid_index(base_coord + ivec3(0, 0, 1))].old_vel * (1 - weights.x) 
-                + cell[get_grid_index(base_coord + ivec3(1, 0, 1))].old_vel * weights.x;
-    vec3 vel_x4 = cell[get_grid_index(base_coord + ivec3(0, 1, 1))].old_vel * (1 - weights.x) 
-                + cell[get_grid_index(base_coord + ivec3(1, 1, 1))].old_vel * weights.x;
+    vec3 vel_x1 = cell[get_grid_index(offset_clamped(base_coord, ivec3(0, 0, 0)))].old_vel * (1 - weights.x) 
+                + cell[get_grid_index(offset_clamped(base_coord, ivec3(1, 0, 0)))].old_vel * weights.x;
+    vec3 vel_x2 = cell[get_grid_index(offset_clamped(base_coord, ivec3(0, 1, 0)))].old_vel * (1 - weights.x) 
+                + cell[get_grid_index(offset_clamped(base_coord, ivec3(1, 1, 0)))].old_vel * weights.x;
+    vec3 vel_x3 = cell[get_grid_index(offset_clamped(base_coord, ivec3(0, 0, 1)))].old_vel * (1 - weights.x) 
+                + cell[get_grid_index(offset_clamped(base_coord, ivec3(1, 0, 1)))].old_vel * weights.x;
+    vec3 vel_x4 = cell[get_grid_index(offset_clamped(base_coord, ivec3(0, 1, 1)))].old_vel * (1 - weights.x) 
+                + cell[get_grid_index(offset_clamped(base_coord, ivec3(1, 1, 1)))].old_vel * weights.x;
     
     // y interpolation
     vec3 vel_y1 = vel_x1 * (1 - weights.y) + vel_x2 * weights.y;
