@@ -88,6 +88,14 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
     Game* game = static_cast<Game*>(glfwGetWindowUserPointer(window));
     if (button == GLFW_MOUSE_BUTTON_1) {
         if (action == GLFW_PRESS) {
+            game->mouse_left_dragging = true;
+        }
+        if (action == GLFW_RELEASE) {
+            game->mouse_left_dragging = false;
+        }
+    }
+    if (button == GLFW_MOUSE_BUTTON_2) {
+        if (action == GLFW_PRESS) {
             game->mouse_right_dragging = true;
             game->mouse_right_drag_start = game->mouse_pos;
         }

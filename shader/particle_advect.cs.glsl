@@ -2,10 +2,11 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 uniform float dt;
 uniform vec3 look;
+uniform vec3 eye;
 uniform vec3 mouse_pos;
 uniform vec3 mouse_vel;
 
-const float mouse_range = 0.1;
+const float mouse_range = 0.25;
 const float epsilon = 0.00001;
 
 bool ray_sphere_isect(vec3 r0, vec3 rd, vec3 s0, float sr) {
@@ -31,7 +32,7 @@ void main() {
     particle[index].pos += particle[index].vel * dt;
     particle[index].pos = clamp(particle[index].pos, bounds_min, bounds_max - vec3(epsilon));
 
-    bool hit = ray_sphere_isect(mouse_pos, look, particle[index].pos, mouse_range);
+    bool hit = ray_sphere_isect(mouse_pos, normalize(mouse_pos - eye), particle[index].pos, mouse_range);
     if (hit)
         particle[index].vel += mouse_vel;
 }

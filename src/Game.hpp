@@ -24,7 +24,9 @@ public:
     GLFWwindow* window;
     glm::vec2 mouse_pos = glm::vec2(0);
     glm::vec2 mouse_right_drag_start = glm::vec2(0);
+    bool mouse_left_dragging = false;
     bool mouse_right_dragging = false;
+    glm::vec3 old_world_mouse_pos = glm::vec3(0);
 
     const float camera_speed = 0.003;
     float camera_yaw = 0;
@@ -37,7 +39,7 @@ public:
     bool particles_visible = true;
     int grid_display_mode = 0;
 
-    Box box;    
+    Box box;
 
     Game(GLFWwindow* window) : window(window) {}
 
@@ -78,6 +80,20 @@ public:
         eye = glm::rotate(eye, camera_yaw, glm::vec3(0, 1, 0));
         eye = glm::rotate(eye, camera_pitch, glm::cross(glm::vec3(0, 1, 0), eye));
         const glm::mat4 view = glm::lookAt(eye, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+        const glm::vec3 look = -glm::xyz(glm::inverse(projection * view) * glm::vec4(0, 0, 1, 0));
+        fluid.eye = eye;
+        fluid.look = look;
+
+        double mouse_pos_x, mouse_pos_y;
+        glfwGetCursorPos(window, &mouse_pos_x, &mouse_pos_y);
+        glm::vec3 mouse_world = glm::unProject(glm::vec3(mouse_pos_x, window_h - mouse_pos_y, 0), view, projection, viewport);
+        fluid.world_mouse_pos = mouse_world;
+        if (mouse_left_dragging) {
+            fluid.world_mouse_vel = ((fluid.world_mouse_pos + glm::normalize(fluid.world_mouse_pos - eye) * 6.f) - (old_world_mouse_pos + glm::normalize(old_world_mouse_pos - eye) * 6.f)) * 10.f;
+        } else {
+            fluid.world_mouse_vel = glm::vec3(0.f);
+        }
+        old_world_mouse_pos = fluid.world_mouse_pos;
 
         // clear screen
         glClearColor(0.16, 0.14, 0.10, 1.0);

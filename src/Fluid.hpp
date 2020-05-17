@@ -29,9 +29,10 @@ struct Fluid {
     const glm::vec3 bounds_size = bounds_max - bounds_min;
     const glm::vec3 cell_size = bounds_size / glm::vec3(grid_cell_dimensions);
     const glm::vec3 gravity{0, -9.8, 0};
-    glm::vec3 world_mouse_pos{0, 0, 0};
+    glm::vec3 world_mouse_pos{0, -0.9, 0};
     glm::vec3 world_mouse_vel{0, 0, 0};
     glm::vec3 look{0, 0, 1};
+    glm::vec3 eye{0, 0, 0};
 
     gfx::Buffer particle_ssbo{GL_SHADER_STORAGE_BUFFER}; // particle data storage
     gfx::Buffer grid_ssbo{GL_SHADER_STORAGE_BUFFER}; // grid data storage
@@ -120,7 +121,7 @@ struct Fluid {
                     initial_transfer.emplace_back(P2GTransfer());
 
                     const glm::ivec3& d = grid_cell_dimensions;
-                    if (gx < d.x / 2 and gy < d.y / 2) {
+                    if (gx < d.x / 2) {
                         initial_grid.emplace_back(GridCell{
                             cell_pos,
                             glm::vec3(0),
@@ -472,7 +473,7 @@ struct Fluid {
         glUniform3fv(grid_to_particle_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
         glUniform3fv(grid_to_particle_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
         glUniform3iv(grid_to_particle_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
-        glUniform1f(grid_to_particle_program.uniform_loc("pic_flip_blend"), 0.92);
+        glUniform1f(grid_to_particle_program.uniform_loc("pic_flip_blend"), 0.);
         grid_to_particle_program.validate();
         glDispatchCompute(particle_ssbo.length(), 1, 1);
         grid_to_particle_program.disuse();
@@ -484,7 +485,7 @@ struct Fluid {
         glUniform1f(particle_advect_program.uniform_loc("dt"), dt);
         glUniform3fv(particle_advect_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
         glUniform3fv(particle_advect_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
-        glUniform3fv(particle_advect_program.uniform_loc("look"), 1, glm::value_ptr(look));
+        glUniform3fv(particle_advect_program.uniform_loc("eye"), 1, glm::value_ptr(eye));
         glUniform3fv(particle_advect_program.uniform_loc("mouse_pos"), 1, glm::value_ptr(world_mouse_pos));
         glUniform3fv(particle_advect_program.uniform_loc("mouse_vel"), 1, glm::value_ptr(world_mouse_vel));
         glDispatchCompute(particle_ssbo.length(), 1, 1);
@@ -513,7 +514,6 @@ struct Fluid {
         glUniformMatrix4fv(program.uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(program.uniform_loc("view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniform4fv(program.uniform_loc("viewport"), 1, glm::value_ptr(viewport));
-        const glm::vec3 look = glm::xyz(glm::inverse(projection * view) * glm::vec4(0, 0, 1, 0));
         glUniform3fv(program.uniform_loc("look"), 1, glm::value_ptr(look));
         vao.bind();
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, num_circle_vertices, particle_ssbo.length());
@@ -537,6 +537,14 @@ struct Fluid {
     }
 
     void draw_debug_lines(const glm::mat4& projection, const glm::mat4& view) {
+        // {
+        //     std::cout << "mx " << world_mouse_pos.x << "," << world_mouse_pos.y << std::endl;
+        //     auto debug_lines = debug_lines_ssbo.map_buffer<DebugLine>();
+        //     debug_lines[2].a = world_mouse_pos;
+        //     debug_lines[2].b = world_mouse_pos + glm::vec3(0.01, 0, 0);
+        //     debug_lines[2].color = glm::vec4(1,0,1,1);
+        // }
+
         debug_lines_program.use();
         glUniformMatrix4fv(debug_lines_program.uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(debug_lines_program.uniform_loc("view"), 1, GL_FALSE, glm::value_ptr(view));
