@@ -2,6 +2,8 @@
 
 *Realtime 3D particle-in-cell fluid simulation*
 
+<img src="promo1.png" alt="promo picture" style="margin: auto; width:500px;"/>
+
 ## Requirements
 
 * OpenGL >= 4.3
