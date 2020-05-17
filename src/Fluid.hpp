@@ -29,6 +29,9 @@ struct Fluid {
     const glm::vec3 bounds_size = bounds_max - bounds_min;
     const glm::vec3 cell_size = bounds_size / glm::vec3(grid_cell_dimensions);
     const glm::vec3 gravity{0, -9.8, 0};
+    glm::vec3 world_mouse_pos{0, 0, 0};
+    glm::vec3 world_mouse_vel{0, 0, 0};
+    glm::vec3 look{0, 0, 1};
 
     gfx::Buffer particle_ssbo{GL_SHADER_STORAGE_BUFFER}; // particle data storage
     gfx::Buffer grid_ssbo{GL_SHADER_STORAGE_BUFFER}; // grid data storage
@@ -481,6 +484,9 @@ struct Fluid {
         glUniform1f(particle_advect_program.uniform_loc("dt"), dt);
         glUniform3fv(particle_advect_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
         glUniform3fv(particle_advect_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
+        glUniform3fv(particle_advect_program.uniform_loc("look"), 1, glm::value_ptr(look));
+        glUniform3fv(particle_advect_program.uniform_loc("mouse_pos"), 1, glm::value_ptr(world_mouse_pos));
+        glUniform3fv(particle_advect_program.uniform_loc("mouse_vel"), 1, glm::value_ptr(world_mouse_vel));
         glDispatchCompute(particle_ssbo.length(), 1, 1);
         particle_advect_program.disuse();
     }
