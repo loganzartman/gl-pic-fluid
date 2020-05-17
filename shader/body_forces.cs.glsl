@@ -8,7 +8,13 @@ void main() {
     uint index = get_grid_index(grid_pos);
 
     cell[index].old_vel = cell[index].vel;
-    cell[index].vel += body_force * dt;
+
+    if (grid_pos.y < grid_dim.y - 1 && grid_pos.z < grid_dim.z - 1)
+        cell[index].vel.x += body_force.x * dt;
+    if (grid_pos.x < grid_dim.x - 1 && grid_pos.z < grid_dim.z - 1)
+        cell[index].vel.y += body_force.y * dt;
+    if (grid_pos.x < grid_dim.x - 1 && grid_pos.y < grid_dim.y - 1)
+        cell[index].vel.z += body_force.z * dt;
 
     // wacky winds
     // cell[get_grid_index(grid_pos)].vel.y += sin(get_world_coord(grid_pos, ivec3(0)).x * 5) * 20 * dt;
