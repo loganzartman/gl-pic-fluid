@@ -2,24 +2,13 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 uniform float pic_flip_blend;
 
-ivec3 offset_clamped(ivec3 base_coord, ivec3 dimension_offset) {
-    // apply an offset (in one basis direction) and clamp to MAC grid
-    ivec3 max_size = grid_cell_dim;
-    if (dimension_offset.x > 0)
-        max_size.x = grid_dim.x;
-    if (dimension_offset.y > 0)
-        max_size.y = grid_dim.y;
-    if (dimension_offset.z > 0)
-        max_size.z = grid_dim.z;
-    return clamp(base_coord + dimension_offset, ivec3(0), max_size - ivec3(1));
-}
-
-vec3 lerp_vel(uint index, ivec3 dimension_offset) {
+vec3 lerp_vel(uint index, ivec3 component) {
     // interpolates velocity from 8 nearby grid corners
     // dimension_offset should correspond to the component of velocity being interpolated
     // other components of interpolated velocity are not meaningful
 
     // this part will change for each u, v, w
+    ivec3 dimension_offset = ivec3(1) - component;
     ivec3 base_coord = get_grid_coord(particle[index].pos, -dimension_offset);
     vec3 weights = (particle[index].pos - get_world_coord(base_coord, dimension_offset)) / cell_size;
 
@@ -43,12 +32,12 @@ vec3 lerp_vel(uint index, ivec3 dimension_offset) {
     return vel;
 }
 
-vec3 lerp_old_vel(uint index, ivec3 dimension_offset) {
+vec3 lerp_old_vel(uint index, ivec3 component) {
     // interpolates delta velocity from 8 nearby grid corners
     // dimension_offset should correspond to the component of velocity being interpolated
     // other components of interpolated velocity are not meaningful
 
-    // this part will change for each u, v, w
+    ivec3 dimension_offset = ivec3(1) - component;
     ivec3 base_coord = get_grid_coord(particle[index].pos, -dimension_offset);
     vec3 weights = (particle[index].pos - get_world_coord(base_coord, dimension_offset)) / cell_size;
 

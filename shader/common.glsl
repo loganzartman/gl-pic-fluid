@@ -33,6 +33,9 @@ struct P2GTransfer {
     int u;
     int v;
     int w;
+    int weight_u;
+    int weight_v;
+    int weight_w;
 };
 
 layout(std430, binding=0) restrict buffer ParticleBlock {
@@ -77,7 +80,20 @@ int get_grid_index(ivec3 grid_coord) {
     return grid_coord.z * grid_dim.y * grid_dim.x + grid_coord.y * grid_dim.x + grid_coord.x;
 }
 
-int FIXED_SCALE = 1000000;
+ivec3 offset_clamped(ivec3 base_coord, ivec3 dimension_offset) {
+    // apply an offset (in one basis direction) and clamp to MAC grid
+    ivec3 max_size = grid_cell_dim;
+    if (dimension_offset.x > 0)
+        max_size.x = grid_dim.x;
+    if (dimension_offset.y > 0)
+        max_size.y = grid_dim.y;
+    if (dimension_offset.z > 0)
+        max_size.z = grid_dim.z;
+    return clamp(base_coord + dimension_offset, ivec3(0), max_size - ivec3(1));
+}
+
+const int MAX_INT = 2147483647;
+const int FIXED_SCALE = MAX_INT / 10000;
 
 int float2fix(float f) {
     return int(round(f * FIXED_SCALE));
