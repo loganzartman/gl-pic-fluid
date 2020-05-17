@@ -36,6 +36,7 @@ struct P2GTransfer {
     int weight_u;
     int weight_v;
     int weight_w;
+    bool is_fluid;
 };
 
 layout(std430, binding=0) restrict buffer ParticleBlock {

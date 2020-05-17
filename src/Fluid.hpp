@@ -39,6 +39,7 @@ struct Fluid {
     gfx::VAO grid_vao;
     gfx::VAO debug_lines_vao; // used for drawing colored lines for debugging
 
+    gfx::Program reset_grid_program; // clear grid state
     gfx::Program p2g_accumulate_program; // accumulate new grid velocities from particles
     gfx::Program p2g_apply_program; // copy new grid velocities to grid data
     gfx::Program particle_advect_program; // compute shader to operate on particles SSBO
@@ -86,6 +87,7 @@ struct Fluid {
             .bind_attrib(debug_lines_ssbo, offsetof(DebugLine, b), sizeof(DebugLine), 3, GL_FLOAT, gfx::NOT_INSTANCED)
             .bind_attrib(debug_lines_ssbo, offsetof(DebugLine, color), sizeof(DebugLine), 4, GL_FLOAT, gfx::NOT_INSTANCED);
         
+        reset_grid_program.compute({"common.glsl", "reset_grid.cs.glsl"}).compile();
         p2g_accumulate_program.compute({"common.glsl", "p2g_accumulate.cs.glsl"}).compile();
         p2g_apply_program.compute({"common.glsl", "p2g_apply.cs.glsl"}).compile();
         grid_to_particle_program.compute({"common.glsl", "grid_to_particle.cs.glsl"}).compile();
@@ -187,6 +189,15 @@ struct Fluid {
         glUniform3iv(program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
     }
 
+    void reset_grid() {
+        ssbo_barrier();
+        reset_grid_program.use();
+        set_common_uniforms(reset_grid_program);
+        reset_grid_program.validate();
+        glDispatchCompute(grid_dimensions.x, grid_dimensions.y, grid_dimensions.z);
+        reset_grid_program.disuse();
+    }
+
     void particle_to_grid_cpu() {
         const auto particles = particle_ssbo.map_buffer_readonly<Particle>();
         auto grid = grid_ssbo.map_buffer<GridCell>();
@@ -269,6 +280,8 @@ struct Fluid {
 
     void particle_to_grid() {
         constexpr static int group_size = 1024;
+        reset_grid();
+
         p2g_accumulate_program.use();
         set_common_uniforms(p2g_accumulate_program);
 
@@ -467,7 +480,7 @@ struct Fluid {
         glUniform3fv(grid_to_particle_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
         glUniform3fv(grid_to_particle_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
         glUniform3iv(grid_to_particle_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
-        glUniform1f(grid_to_particle_program.uniform_loc("pic_flip_blend"), 0.);
+        glUniform1f(grid_to_particle_program.uniform_loc("pic_flip_blend"), 0.8);
         grid_to_particle_program.validate();
         glDispatchCompute(particle_ssbo.length(), 1, 1);
         grid_to_particle_program.disuse();
