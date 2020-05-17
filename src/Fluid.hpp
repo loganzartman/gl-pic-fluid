@@ -152,7 +152,7 @@ struct Fluid {
         //     glm::vec3(0.005, 0.01, 0.01),
         //     glm::vec4(1, 0, 1, 1)
         // });
-        particle_ssbo.bind_base(0).set_data(initial_particles, GL_DYNAMIC_READ);
+        particle_ssbo.bind_base(0).set_data(initial_particles, GL_DYNAMIC_COPY);
         grid_ssbo.bind_base(1).set_data(initial_grid, GL_DYNAMIC_COPY);
         std::cerr << "Cell count: " << initial_grid.size() << std::endl;
         std::cerr << "Particle count: " << initial_particles.size() << std::endl;
