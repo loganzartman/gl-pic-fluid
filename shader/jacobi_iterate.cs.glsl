@@ -6,10 +6,6 @@ void main() {
     ivec3 grid_pos = ivec3(gl_WorkGroupID);
     uint index = get_grid_index(grid_pos);
 
-    // cell[index].pressure = 0;
-    // if (grid_pos.y < 3) {
-    //     cell[index].pressure = 10;
-    // }
     if (cell[index].type == AIR) {
         cell[index].pressure = 0;
         return;

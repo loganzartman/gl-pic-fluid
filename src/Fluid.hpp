@@ -20,7 +20,7 @@ struct Fluid {
     const int num_circle_vertices = 16; // circle detail for particle rendering
 
     const int particle_density = 8;
-    const int grid_size = 16;
+    const int grid_size = 25;
     const glm::ivec3 grid_dimensions{grid_size + 1, grid_size + 1, grid_size + 1};
     const glm::ivec3 grid_cell_dimensions{grid_size, grid_size, grid_size};
     const glm::vec3 bounds_min{-1, -1, -1};
@@ -105,7 +105,8 @@ struct Fluid {
                     const glm::ivec3 gpos{gx, gy, gz};
                     const glm::vec3 cell_pos = get_world_coord(gpos);
 
-                    if (gx < grid_cell_dimensions.x / 2 and gy < grid_cell_dimensions.y * 2 / 3) {
+                    const glm::ivec3& d = grid_cell_dimensions;
+                    if (gx < d.x / 2 and gy < d.y / 2) {
                         initial_grid.emplace_back(GridCell{
                             cell_pos,
                             glm::vec3(0),
@@ -174,9 +175,14 @@ struct Fluid {
         auto grid = grid_ssbo.map_buffer<GridCell>();
 
         // clear grid values
-        for (int i = 0; i < grid_ssbo.length(); ++i) {
-            grid[i].type = GRID_AIR;
-            grid[i].vel = glm::vec3(0);
+        for (int x = 0; x < grid_dimensions.x; ++x) {
+            for (int y = 0; y < grid_dimensions.y; ++y) {
+                for (int z = 0; z < grid_dimensions.z; ++z) {
+                    const int i = get_grid_index({x, y, z});
+                    grid[i].type = (x < grid_cell_dimensions.x and y < grid_cell_dimensions.y and z < grid_cell_dimensions.z) ? GRID_AIR : GRID_SOLID;
+                    grid[i].vel = glm::vec3(0);
+                }
+            }
         }
 
         // particle to cell transfer
@@ -445,7 +451,7 @@ struct Fluid {
     }
 
     void step() {
-        const float dt = 0.03;
+        const float dt = 0.02;
         particle_to_grid();
         // extrapolate();
         apply_body_forces(dt);

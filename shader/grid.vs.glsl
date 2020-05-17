@@ -39,7 +39,7 @@ void main() {
     if (display_mode == 3) {
         if (length(a) == 0)
             vs_discard = 1;
-        vs_color = vec3(abs(a.xyz));
+        vs_color = vec3(a.yzw * 0.1 + 0.5);
     }
     if (display_mode == 4) {
         if (pressure == 0)
