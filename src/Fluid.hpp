@@ -423,7 +423,7 @@ struct Fluid {
         glUniform3fv(grid_to_particle_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
         glUniform3fv(grid_to_particle_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
         glUniform3iv(grid_to_particle_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
-        glUniform1f(grid_to_particle_program.uniform_loc("pic_flip_blend"), 0.95);
+        glUniform1f(grid_to_particle_program.uniform_loc("pic_flip_blend"), 0.);
         grid_to_particle_program.validate();
         glDispatchCompute(particle_ssbo.length(), 1, 1);
         grid_to_particle_program.disuse();
