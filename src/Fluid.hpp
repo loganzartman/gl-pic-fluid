@@ -20,8 +20,8 @@
 struct Fluid {
     const int num_circle_vertices = 16; // circle detail for particle rendering
 
-    const int particle_density = 8;
-    const int grid_size = 32;
+    const int particle_density = 16;
+    const int grid_size = 28;
     const glm::ivec3 grid_dimensions{grid_size + 1, grid_size + 1, grid_size + 1};
     const glm::ivec3 grid_cell_dimensions{grid_size, grid_size, grid_size};
     const glm::vec3 bounds_min{-1, -1, -1};
@@ -102,7 +102,7 @@ struct Fluid {
         jacobi_iterate_program.compute({"common.glsl", "jacobi_iterate.cs.glsl"}).compile();
         pressure_to_guess_program.compute({"common.glsl", "pressure_to_guess.cs.glsl"}).compile();
         pressure_update_program.compute({"common.glsl", "pressure_update.cs.glsl"}).compile();
-        particle_advect_program.compute({"common.glsl", "particle_advect.cs.glsl"}).compile();
+        particle_advect_program.compute({"common.glsl", "rand.glsl", "particle_advect.cs.glsl"}).compile();
         program.vertex({"particles.vs.glsl"}).fragment({"lighting.glsl", "particles.fs.glsl"}).compile();
         grid_program.vertex({"common.glsl", "grid.vs.glsl"}).geometry({"common.glsl", "grid.gs.glsl"}).fragment({"grid.fs.glsl"}).compile();
         debug_lines_program.vertex({"debug_lines.vs.glsl"}).geometry({"debug_lines.gs.glsl"}).fragment({"debug_lines.fs.glsl"}).compile();
@@ -121,7 +121,7 @@ struct Fluid {
                     initial_transfer.emplace_back(P2GTransfer());
 
                     const glm::ivec3& d = grid_cell_dimensions;
-                    if (gx < d.x / 2) {
+                    if (gy < d.y / 2) {
                         initial_grid.emplace_back(GridCell{
                             cell_pos,
                             glm::vec3(0),
@@ -148,11 +148,6 @@ struct Fluid {
                 }
             }
         }
-        // initial_particles.emplace_back(Particle{
-        //     (bounds_min + bounds_max) / 2.f + cell_size / 3.f,
-        //     glm::vec3(0.005, 0.01, 0.01),
-        //     glm::vec4(1, 0, 1, 1)
-        // });
         particle_ssbo.bind_base(0).set_data(initial_particles, GL_DYNAMIC_COPY);
         grid_ssbo.bind_base(1).set_data(initial_grid, GL_DYNAMIC_COPY);
         std::cerr << "Cell count: " << initial_grid.size() << std::endl;
@@ -357,7 +352,7 @@ struct Fluid {
     }
 
     void pressure_solve() {
-        const int iters = 50;
+        const int iters = 40;
 
         jacobi_iterate_program.use();
         set_common_uniforms(jacobi_iterate_program);
@@ -485,6 +480,7 @@ struct Fluid {
         glUniform1f(particle_advect_program.uniform_loc("dt"), dt);
         glUniform3fv(particle_advect_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
         glUniform3fv(particle_advect_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
+        glUniform3iv(particle_advect_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
         glUniform3fv(particle_advect_program.uniform_loc("eye"), 1, glm::value_ptr(eye));
         glUniform3fv(particle_advect_program.uniform_loc("mouse_pos"), 1, glm::value_ptr(world_mouse_pos));
         glUniform3fv(particle_advect_program.uniform_loc("mouse_vel"), 1, glm::value_ptr(world_mouse_vel));
@@ -537,14 +533,6 @@ struct Fluid {
     }
 
     void draw_debug_lines(const glm::mat4& projection, const glm::mat4& view) {
-        // {
-        //     std::cout << "mx " << world_mouse_pos.x << "," << world_mouse_pos.y << std::endl;
-        //     auto debug_lines = debug_lines_ssbo.map_buffer<DebugLine>();
-        //     debug_lines[2].a = world_mouse_pos;
-        //     debug_lines[2].b = world_mouse_pos + glm::vec3(0.01, 0, 0);
-        //     debug_lines[2].color = glm::vec4(1,0,1,1);
-        // }
-
         debug_lines_program.use();
         glUniformMatrix4fv(debug_lines_program.uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(projection));
         glUniformMatrix4fv(debug_lines_program.uniform_loc("view"), 1, GL_FALSE, glm::value_ptr(view));

@@ -7,7 +7,6 @@ uniform vec3 mouse_pos;
 uniform vec3 mouse_vel;
 
 const float mouse_range = 0.25;
-const float epsilon = 0.00001;
 
 bool ray_sphere_isect(vec3 r0, vec3 rd, vec3 s0, float sr) {
     // - r0: ray origin
@@ -30,7 +29,13 @@ void main() {
     uint index = gl_WorkGroupID.x;
     // TODO: don't use explicit Euler integration
     particle[index].pos += particle[index].vel * dt;
-    particle[index].pos = clamp(particle[index].pos, bounds_min, bounds_max - vec3(epsilon));
+    
+    // jitter particle positions to prevent squishing
+    // const float jitter = 0.01;
+    // particle[index].pos += hash3(floatBitsToInt(particle[index].pos)) * jitter - 0.5 * jitter;
+
+    vec3 epsilon = vec3(0.00001);//cell_size - 0.01;
+    particle[index].pos = clamp(particle[index].pos, bounds_min + epsilon, bounds_max - epsilon);
 
     bool hit = ray_sphere_isect(mouse_pos, normalize(mouse_pos - eye), particle[index].pos, mouse_range);
     if (hit)

@@ -44,7 +44,7 @@ void main() {
     if (display_mode == 4) {
         if (pressure == 0)
             vs_discard = 1;
-        vs_color = isnan(pressure) ? vec3(1, 0, 1) : vec3(max(0, -pressure), max(0, pressure), 0);
+        vs_color = isnan(pressure) ? vec3(1, 0, 1) : vec3(max(0, -pressure), max(0, pressure), 0) * 0.1;
     }
     if (display_mode == 5) {
         vs_color = vel_unknown == 1 ? vec3(1, 0, 0) : vec3(0);
