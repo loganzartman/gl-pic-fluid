@@ -1,7 +1,7 @@
 vec3 phong_shade(vec3 light_direction, vec3 look, vec3 normal, vec3 ka, vec3 kd, vec3 ks, float shininess) {
     vec3 R = reflect(-light_direction, normal);
     float diffuse = max(0, dot(light_direction, normal));
-    float specular = pow(max(0, dot(R, -look)), shininess);
+    float specular = pow(max(0, dot(R, look)), shininess);
     return ka + kd * diffuse + ks * specular;
 }
 
