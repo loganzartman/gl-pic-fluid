@@ -11,7 +11,8 @@ uniform vec3 look;
 
 out vec4 frag_color;
 
-const float base_translucency = 0.2;
+const float base_translucency = 0.4;
+const float refractivity = 0.05;
 const vec3 k_absorption = vec3(0.9, 0.22, 0.05);
 const vec4 k_reflection = vec4(1);
 
@@ -47,9 +48,11 @@ void main() {
 
     vec3 world_pos = (inv_view * eye_pos).xyz;
 
+    // fake refraction
+    vec3 refracted_color = texture(scene_tex, uv + normal.xy * thickness * refractivity).rgb;
+
     // beer's law (light absorption)
     vec3 absorption_color = exp(-3 * k_absorption * thickness);
-    vec3 refracted_color = texture(scene_tex, uv).rgb;
     float translucency = max(base_translucency, 1 - pow(thickness, 1));
     vec3 transmitted_color = (1 - translucency) * absorption_color + translucency * refracted_color;
 
