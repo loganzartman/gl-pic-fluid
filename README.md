@@ -2,7 +2,7 @@
 
 *Realtime 3D particle-in-cell fluid simulation*
 
-<img src="promo2.png" alt="promo picture" style="margin: auto;"/>
+<img src="promo3.png" alt="promo picture" style="margin: auto;"/>
 
 ## Requirements
 
@@ -41,7 +41,13 @@ Controls:
     * `4` - pressure solver A coefficients
     * `5` - pressure
 
+## Known Bugs
+
+* There is a lingering boundary condition bug which causes fluid to stick to positive direction walls.
+    * The stickiness is patched in the pressure update shader, but a bias in the fluid pressures remains.
+* If fluid gathers in the +XYZ corner of the cube, it can cause the simulation to explode. I expect that this is related to or is a result of the previous bug.
+
 ## Development
 
-* Make sure to list new source files in CMakeLists.txt!
 * Simulation code is split across `src/Fluid.hpp` and `*.cs.glsl` shaders in `shader/`
+* Make sure to list new source files in CMakeLists.txt!
