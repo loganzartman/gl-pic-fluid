@@ -149,7 +149,7 @@ struct Fluid {
                     initial_transfer.emplace_back(P2GTransfer());
 
                     const glm::ivec3& d = grid_cell_dimensions;
-                    if (gy < d.y / 2) {
+                    if (gx < d.x / 2) {
                         initial_grid.emplace_back(GridCell{
                             cell_pos,
                             glm::vec3(0),
@@ -505,7 +505,7 @@ struct Fluid {
         glUniform3fv(grid_to_particle_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
         glUniform3fv(grid_to_particle_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
         glUniform3iv(grid_to_particle_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
-        glUniform1f(grid_to_particle_program.uniform_loc("pic_flip_blend"), 0.);
+        glUniform1f(grid_to_particle_program.uniform_loc("pic_flip_blend"), 0.9);
         grid_to_particle_program.validate();
         glDispatchCompute(particle_ssbo.length(), 1, 1);
         grid_to_particle_program.disuse();
@@ -557,59 +557,78 @@ struct Fluid {
     void draw_particles_ssf(const glm::mat4& projection, const glm::mat4& view, const glm::vec4& viewport) {
         constexpr static GLenum ssf_draw_buffers[]{GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
 
-        glDisable(GL_BLEND);
         // render spheres and position data
         ssf_spheres_program.use();
-        set_common_uniforms(ssf_spheres_program);
-        glUniformMatrix4fv(ssf_spheres_program.uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(projection));
-        glUniformMatrix4fv(ssf_spheres_program.uniform_loc("view"), 1, GL_FALSE, glm::value_ptr(view));
-        glUniform4fv(ssf_spheres_program.uniform_loc("viewport"), 1, glm::value_ptr(viewport));
-        glUniform3fv(ssf_spheres_program.uniform_loc("look"), 1, glm::value_ptr(look));
-        vao.bind();
-        ssf_a_texture.bind_framebuffer();
-        glClearColor(0.0f,0.0f,0.0f,0.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glDrawBuffers(2, ssf_draw_buffers);
-        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, num_circle_vertices, particle_ssbo.length());
-        ssf_a_texture.unbind_framebuffer();
-        vao.unbind();
+            set_common_uniforms(ssf_spheres_program);
+            glUniformMatrix4fv(ssf_spheres_program.uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(projection));
+            glUniformMatrix4fv(ssf_spheres_program.uniform_loc("view"), 1, GL_FALSE, glm::value_ptr(view));
+            glUniform4fv(ssf_spheres_program.uniform_loc("viewport"), 1, glm::value_ptr(viewport));
+            glUniform3fv(ssf_spheres_program.uniform_loc("look"), 1, glm::value_ptr(look));
+
+            vao.bind();
+            ssf_a_texture.bind_framebuffer();
+
+            // clear buffers
+            glDrawBuffers(2, ssf_draw_buffers);
+            glClearColor(0, 0, 0, 0);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            // color pass
+            glEnable(GL_BLEND);
+            glDisable(GL_DEPTH_TEST);
+            glBlendFunc(GL_ONE, GL_ONE);
+            glUniform1i(ssf_spheres_program.uniform_loc("pass"), 0);
+            constexpr static GLenum first_pass_buffers[]{GL_COLOR_ATTACHMENT0, GL_NONE};
+            glDrawBuffers(2, first_pass_buffers);
+            glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, num_circle_vertices, particle_ssbo.length());
+
+            // sphere position pass
+            glDisable(GL_BLEND);
+            glEnable(GL_DEPTH_TEST);
+            glUniform1i(ssf_spheres_program.uniform_loc("pass"), 1);
+            constexpr static GLenum second_pass_buffers[]{GL_NONE, GL_COLOR_ATTACHMENT1};
+            glDrawBuffers(2, second_pass_buffers);
+            glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, num_circle_vertices, particle_ssbo.length());
+            
+            ssf_a_texture.unbind_framebuffer();
+            vao.unbind();
         ssf_spheres_program.disuse();
 
-        // // smooth sphere depths, do color thing
+        // smooth sphere depths, do color thing
+        glDisable(GL_BLEND);
         ssf_smooth_program.use();
-        glUniform2iv(ssf_smooth_program.uniform_loc("resolution"), 1, glm::value_ptr(resolution));
-        screen_quad_vao.bind();
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, ssf_a_texture.color1_id);
-        ssf_b_texture.bind_framebuffer();
-        glClearColor(0.0f,0.0f,0.0f,1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glDrawBuffers(2, ssf_draw_buffers);
-        glDrawArrays(GL_TRIANGLE_FAN, 0, viewport_rect.length());
-        ssf_b_texture.unbind_framebuffer();
-        glBindTexture(GL_TEXTURE_2D, 0);
-        screen_quad_vao.unbind();
+            glUniform2iv(ssf_smooth_program.uniform_loc("resolution"), 1, glm::value_ptr(resolution));
+            screen_quad_vao.bind();
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, ssf_a_texture.color1_id);
+            ssf_b_texture.bind_framebuffer();
+            glDrawBuffers(2, ssf_draw_buffers);
+            glClearColor(0, 0, 0, 1);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glDrawArrays(GL_TRIANGLE_FAN, 0, viewport_rect.length());
+            ssf_b_texture.unbind_framebuffer();
+            glBindTexture(GL_TEXTURE_2D, 0);
+            screen_quad_vao.unbind();
         ssf_smooth_program.disuse();
 
         // shade fluid
-        glEnable(GL_BLEND);
         // glDisable(GL_DEPTH_TEST);
         ssf_shade_program.use();
-        glUniform2iv(ssf_shade_program.uniform_loc("resolution"), 1, glm::value_ptr(resolution));
-        glUniformMatrix4fv(ssf_shade_program.uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(projection));
-        glUniformMatrix4fv(ssf_shade_program.uniform_loc("inv_view"), 1, GL_FALSE, glm::value_ptr(glm::inverse(view)));
-        glUniform3fv(ssf_shade_program.uniform_loc("look"), 1, glm::value_ptr(look));
-        glUniform3fv(ssf_shade_program.uniform_loc("eye"), 1, glm::value_ptr(eye));
-        screen_quad_vao.bind();
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, ssf_a_texture.color_id);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, ssf_a_texture.depth_id);
-        glActiveTexture(GL_TEXTURE2);
-        glBindTexture(GL_TEXTURE_2D, ssf_b_texture.color1_id); // sphere position data
-        glDrawArrays(GL_TRIANGLE_FAN, 0, viewport_rect.length());
-        glBindTexture(GL_TEXTURE_2D, 0);
-        screen_quad_vao.unbind();
+            glUniform2iv(ssf_shade_program.uniform_loc("resolution"), 1, glm::value_ptr(resolution));
+            glUniformMatrix4fv(ssf_shade_program.uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(projection));
+            glUniformMatrix4fv(ssf_shade_program.uniform_loc("inv_view"), 1, GL_FALSE, glm::value_ptr(glm::inverse(view)));
+            glUniform3fv(ssf_shade_program.uniform_loc("look"), 1, glm::value_ptr(look));
+            glUniform3fv(ssf_shade_program.uniform_loc("eye"), 1, glm::value_ptr(eye));
+            screen_quad_vao.bind();
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, ssf_a_texture.color_id);
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, ssf_a_texture.depth_id);
+            glActiveTexture(GL_TEXTURE2);
+            glBindTexture(GL_TEXTURE_2D, ssf_b_texture.color1_id); // sphere position data
+            glDrawArrays(GL_TRIANGLE_FAN, 0, viewport_rect.length());
+            glBindTexture(GL_TEXTURE_2D, 0);
+            screen_quad_vao.unbind();
         ssf_shade_program.disuse();
     }
 

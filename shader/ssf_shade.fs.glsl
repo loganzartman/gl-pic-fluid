@@ -12,7 +12,7 @@ out vec4 frag_color;
 
 void main() {
     vec2 uv = gl_FragCoord.xy / vec2(resolution);
-    vec4 color = texture(color_tex, uv);
+    float thickness = texture(color_tex, uv).r;
     float depth = texture(depth_tex, uv).x;
 
     // compute normals with finite differences
@@ -41,7 +41,10 @@ void main() {
     vec3 normal = normalize((inv_view * vec4(eye_normal, 0)).xyz);
 
     vec3 world_pos = (inv_view * eye_pos).xyz;
-    vec3 phong_color = shade(world_pos, normalize(look), normal, vec3(0.1), vec3(0.1, 0.2, 0.5), vec3(0.5), 64);
-    frag_color = vec4(phong_color, color.a);
+
+    // beer's law (light absorption)
+    const vec3 absorption =  vec3(0.3, 0.12, 0.05);
+    vec3 transmitted_color = exp(-5 * absorption * thickness);
+    frag_color = vec4(transmitted_color, thickness);
     gl_FragDepth = depth;
 }

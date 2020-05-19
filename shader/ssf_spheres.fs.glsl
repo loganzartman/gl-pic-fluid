@@ -9,6 +9,7 @@ uniform vec3 look;
 uniform vec4 viewport;
 uniform mat4 projection;
 uniform mat4 view;
+uniform int pass;
 
 // adapted from https://gist.github.com/wwwtyro/beecc31d65d1004f5a9d
 float ray_sphere_dist(vec3 r0, vec3 rd, vec3 s0, float sr) {
@@ -53,12 +54,19 @@ void main() {
 
     vec3 isect = eye + look * dist;
     vec3 normal = normalize(isect - vs_particle_pos);
-    frag_color = vec4(normal, 1);
-
+    
     // compute fragment depth on sphere in eye space and NDC
     vec4 eye_isect = view * vec4(isect, 1);
     vec4 ndc_isect = projection * eye_isect;
 
-    sphere_pos = eye_isect;
-    gl_FragDepth = ndc_isect.z / ndc_isect.w; // clip-space depth
+    if (pass == 0) {
+        // thickness pass
+        float f = (eye_isect.z - (view * vec4(vs_particle_pos, 1)).z) / vs_particle_radius;
+        frag_color = vec4(vec3(f * 0.05), 1);
+    }
+    if (pass == 1) {
+        // position pass
+        sphere_pos = eye_isect;
+        gl_FragDepth = ndc_isect.z / ndc_isect.w; // clip-space depth
+    }
 }
