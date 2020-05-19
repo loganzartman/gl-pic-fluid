@@ -23,6 +23,8 @@
 2. `bin/fluid`
 
 Controls:
+* Left click and drag to interact with fluid
+* Right click and drag to rotate the view
 * `space` - play/pause
 * `s` - step
 * `r` - reset
@@ -46,6 +48,7 @@ Controls:
 * There is a lingering boundary condition bug which causes fluid to stick to positive direction walls.
     * The stickiness is patched in the pressure update shader, but a bias in the fluid pressures remains.
 * If fluid gathers in the +XYZ corner of the cube, it can cause the simulation to explode. I expect that this is related to or is a result of the previous bug.
+    * Press `r` to restart the simulation if this happens
 
 ## Development
 
