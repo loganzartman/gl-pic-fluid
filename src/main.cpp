@@ -57,6 +57,9 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
         if (key == GLFW_KEY_R) {
             game->fluid.init_ssbos();
         }
+        if (key == GLFW_KEY_F) {
+            game->use_ssf = !game->use_ssf;
+        }
 
         if (key == GLFW_KEY_1) {
             game->grid_display_mode = 0;
@@ -106,6 +109,8 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
 }
 
 void FramebufferSizeCallback(GLFWwindow* window, int w, int h) {
+    Game* game = static_cast<Game*>(glfwGetWindowUserPointer(window));
+    game->resize(w, h);
 }
 
 int main() {
@@ -138,8 +143,12 @@ int main() {
     Game game(window);
     glfwSetWindowUserPointer(window, &game);
 
-    // main loop
     game.init();
+    int window_w, window_h;
+    glfwGetWindowSize(window, &window_w, &window_h);
+    game.resize(window_w, window_h);
+
+    // main loop
     while (!glfwWindowShouldClose(window)) {
         game.update();
         glfwSwapBuffers(window);

@@ -37,6 +37,7 @@ public:
     bool do_step = false;
     bool grid_visible = false;
     bool particles_visible = true;
+    bool use_ssf = true;
     int grid_display_mode = 0;
 
     Box box;
@@ -46,6 +47,10 @@ public:
     void init() {
         srand(time(0));
         fluid.init();
+    }
+
+    void resize(uint w, uint h) {
+        fluid.resize(w, h);
     }
 
     void update_camera() {
@@ -110,8 +115,13 @@ public:
 
         if (grid_visible)
             fluid.draw_grid(projection, view, grid_display_mode);
-        if (particles_visible)
-            fluid.draw_particles(projection, view, viewport);
+        if (particles_visible) {
+            if (use_ssf)
+                fluid.draw_particles_ssf(projection, view, viewport);
+            else
+                fluid.draw_particles(projection, view, viewport);
+        }
+
         fluid.draw_debug_lines(projection, view);
         box.draw(projection, view, eye);
     }

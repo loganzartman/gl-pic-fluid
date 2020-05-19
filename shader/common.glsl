@@ -55,13 +55,16 @@ layout(std430, binding=3) coherent buffer P2GTransferBlock {
     P2GTransfer p2g_transfer[];
 };
 
-const float density = 1; // kg/m^3
 uniform ivec3 grid_dim;
-ivec3 grid_cell_dim = grid_dim - ivec3(1);
 uniform vec3 bounds_min;
 uniform vec3 bounds_max;
+uniform ivec2 resolution;
+
+ivec3 grid_cell_dim = grid_dim - ivec3(1);
 vec3 bounds_size = bounds_max - bounds_min;
 vec3 cell_size = bounds_size / vec3(grid_dim - ivec3(1));
+
+const float density = 1; // kg/m^3
 
 bool grid_in_bounds(ivec3 grid_coord) {
     return grid_coord.x >= 0 && grid_coord.y >= 0 && grid_coord.z >= 0 &&

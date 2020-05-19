@@ -13,15 +13,18 @@
 #include "Particle.hpp"
 #include "DebugLine.hpp"
 #include "P2GTransfer.hpp"
+#include "SSFBufferElement.hpp"
+#include "SSFRenderTexture.hpp"
 #include "util.hpp"
 #include "gfx/object.hpp"
 #include "gfx/program.hpp"
+#include "gfx/rendertexture.hpp"
 
 struct Fluid {
     const int num_circle_vertices = 16; // circle detail for particle rendering
 
     const int particle_density = 16;
-    const int grid_size = 28;
+    const int grid_size = 24;
     const glm::ivec3 grid_dimensions{grid_size + 1, grid_size + 1, grid_size + 1};
     const glm::ivec3 grid_cell_dimensions{grid_size, grid_size, grid_size};
     const glm::vec3 bounds_min{-1, -1, -1};
@@ -33,7 +36,9 @@ struct Fluid {
     glm::vec3 world_mouse_vel{0, 0, 0};
     glm::vec3 look{0, 0, 1};
     glm::vec3 eye{0, 0, 0};
+    glm::ivec2 resolution{0, 0};
 
+    gfx::Buffer viewport_rect{GL_ARRAY_BUFFER};
     gfx::Buffer particle_ssbo{GL_SHADER_STORAGE_BUFFER}; // particle data storage
     gfx::Buffer grid_ssbo{GL_SHADER_STORAGE_BUFFER}; // grid data storage
     gfx::Buffer transfer_ssbo{GL_SHADER_STORAGE_BUFFER}; // p2g transfer storage buffer
@@ -42,6 +47,7 @@ struct Fluid {
     gfx::VAO vao;
     gfx::VAO grid_vao;
     gfx::VAO debug_lines_vao; // used for drawing colored lines for debugging
+    gfx::VAO screen_quad_vao; // fullscreen quad vertices
 
     gfx::Program reset_grid_program; // clear grid state
     gfx::Program p2g_accumulate_program; // accumulate new grid velocities from particles
@@ -59,6 +65,15 @@ struct Fluid {
     gfx::Program program; // program for particle rendering
     gfx::Program grid_program;
     gfx::Program debug_lines_program;
+
+    // screen space fluid rendering
+    gfx::Program ssf_spheres_program; // SSF sphere rendering
+    gfx::Program ssf_smooth_program; // SSF smoothing
+    gfx::Program ssf_shade_program; // SSF shading
+
+    gfx::RenderTexture scene_texture; // stores rendered things that are not fluid
+    SSFRenderTexture ssf_a_texture; // stores sphere color/depth data, and world space position
+    SSFRenderTexture ssf_b_texture; // it's double buffered for read/write
 
     Fluid() {}
 
@@ -91,6 +106,14 @@ struct Fluid {
             .bind_attrib(debug_lines_ssbo, offsetof(DebugLine, b), sizeof(DebugLine), 3, GL_FLOAT, gfx::NOT_INSTANCED)
             .bind_attrib(debug_lines_ssbo, offsetof(DebugLine, color), sizeof(DebugLine), 4, GL_FLOAT, gfx::NOT_INSTANCED);
         
+        std::vector<glm::vec2> viewport_rect_data;
+        viewport_rect_data.emplace_back(0, 0);
+        viewport_rect_data.emplace_back(1, 0);
+        viewport_rect_data.emplace_back(1, 1);
+        viewport_rect_data.emplace_back(0, 1);
+        viewport_rect.set_data(viewport_rect_data);
+        screen_quad_vao.bind_attrib(viewport_rect, 2, GL_FLOAT);
+        
         reset_grid_program.compute({"common.glsl", "reset_grid.cs.glsl"}).compile();
         p2g_accumulate_program.compute({"common.glsl", "p2g_accumulate.cs.glsl"}).compile();
         p2g_apply_program.compute({"common.glsl", "p2g_apply.cs.glsl"}).compile();
@@ -103,9 +126,14 @@ struct Fluid {
         pressure_to_guess_program.compute({"common.glsl", "pressure_to_guess.cs.glsl"}).compile();
         pressure_update_program.compute({"common.glsl", "pressure_update.cs.glsl"}).compile();
         particle_advect_program.compute({"common.glsl", "rand.glsl", "particle_advect.cs.glsl"}).compile();
+        
         program.vertex({"particles.vs.glsl"}).fragment({"lighting.glsl", "particles.fs.glsl"}).compile();
         grid_program.vertex({"common.glsl", "grid.vs.glsl"}).geometry({"common.glsl", "grid.gs.glsl"}).fragment({"grid.fs.glsl"}).compile();
         debug_lines_program.vertex({"debug_lines.vs.glsl"}).geometry({"debug_lines.gs.glsl"}).fragment({"debug_lines.fs.glsl"}).compile();
+
+        ssf_spheres_program.vertex({"particles.vs.glsl"}).fragment({"common.glsl", "ssf_spheres.fs.glsl"}).compile();
+        ssf_smooth_program.vertex({"ssf_smooth.vs.glsl"}).fragment({"ssf_smooth.fs.glsl"}).compile();
+        ssf_shade_program.vertex({"ssf_shade.vs.glsl"}).fragment({"lighting.glsl", "ssf_shade.fs.glsl"}).compile();
     }
 
     void init_ssbos() {
@@ -164,6 +192,14 @@ struct Fluid {
         std::cout << "Size of debug lines buffer " << debug_lines_ssbo.length() << " (" << debug_lines_ssbo.size() << " bytes)" << std::endl;
     }
 
+    void resize(uint w, uint h) {
+        scene_texture.set_texture_size(w, h);
+        ssf_a_texture.set_texture_size(w, h);
+        ssf_b_texture.set_texture_size(w, h);
+        resolution.x = w;
+        resolution.y = h;
+    }
+
     glm::ivec3 get_grid_coord(const glm::vec3& pos, const glm::ivec3& half_offset = glm::ivec3(0, 0, 0)) {
         return glm::floor((pos + glm::vec3(half_offset) * (cell_size / 2.f) - bounds_min) / bounds_size * glm::vec3(grid_cell_dimensions));
     }
@@ -186,6 +222,7 @@ struct Fluid {
         glUniform3fv(program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
         glUniform3fv(program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
         glUniform3iv(program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
+        glUniform2iv(program.uniform_loc("resolution"), 1, glm::value_ptr(resolution));
     }
 
     void reset_grid() {
@@ -515,6 +552,65 @@ struct Fluid {
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, num_circle_vertices, particle_ssbo.length());
         vao.unbind();
         program.disuse();
+    }
+
+    void draw_particles_ssf(const glm::mat4& projection, const glm::mat4& view, const glm::vec4& viewport) {
+        constexpr static GLenum ssf_draw_buffers[]{GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+
+        glDisable(GL_BLEND);
+        // render spheres and position data
+        ssf_spheres_program.use();
+        set_common_uniforms(ssf_spheres_program);
+        glUniformMatrix4fv(ssf_spheres_program.uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(projection));
+        glUniformMatrix4fv(ssf_spheres_program.uniform_loc("view"), 1, GL_FALSE, glm::value_ptr(view));
+        glUniform4fv(ssf_spheres_program.uniform_loc("viewport"), 1, glm::value_ptr(viewport));
+        glUniform3fv(ssf_spheres_program.uniform_loc("look"), 1, glm::value_ptr(look));
+        vao.bind();
+        ssf_a_texture.bind_framebuffer();
+        glClearColor(0.0f,0.0f,0.0f,0.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glDrawBuffers(2, ssf_draw_buffers);
+        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, num_circle_vertices, particle_ssbo.length());
+        ssf_a_texture.unbind_framebuffer();
+        vao.unbind();
+        ssf_spheres_program.disuse();
+
+        // // smooth sphere depths, do color thing
+        ssf_smooth_program.use();
+        glUniform2iv(ssf_smooth_program.uniform_loc("resolution"), 1, glm::value_ptr(resolution));
+        screen_quad_vao.bind();
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, ssf_a_texture.color1_id);
+        ssf_b_texture.bind_framebuffer();
+        glClearColor(0.0f,0.0f,0.0f,1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glDrawBuffers(2, ssf_draw_buffers);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, viewport_rect.length());
+        ssf_b_texture.unbind_framebuffer();
+        glBindTexture(GL_TEXTURE_2D, 0);
+        screen_quad_vao.unbind();
+        ssf_smooth_program.disuse();
+
+        // shade fluid
+        glEnable(GL_BLEND);
+        // glDisable(GL_DEPTH_TEST);
+        ssf_shade_program.use();
+        glUniform2iv(ssf_shade_program.uniform_loc("resolution"), 1, glm::value_ptr(resolution));
+        glUniformMatrix4fv(ssf_shade_program.uniform_loc("projection"), 1, GL_FALSE, glm::value_ptr(projection));
+        glUniformMatrix4fv(ssf_shade_program.uniform_loc("inv_view"), 1, GL_FALSE, glm::value_ptr(glm::inverse(view)));
+        glUniform3fv(ssf_shade_program.uniform_loc("look"), 1, glm::value_ptr(look));
+        glUniform3fv(ssf_shade_program.uniform_loc("eye"), 1, glm::value_ptr(eye));
+        screen_quad_vao.bind();
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, ssf_a_texture.color_id);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, ssf_a_texture.depth_id);
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, ssf_b_texture.color1_id); // sphere position data
+        glDrawArrays(GL_TRIANGLE_FAN, 0, viewport_rect.length());
+        glBindTexture(GL_TEXTURE_2D, 0);
+        screen_quad_vao.unbind();
+        ssf_shade_program.disuse();
     }
 
     void draw_grid(const glm::mat4& projection, const glm::mat4& view, int display_mode) {

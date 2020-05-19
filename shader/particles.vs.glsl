@@ -12,7 +12,7 @@ uniform mat4 view;
 const int display_mode = 1;
 
 void main() {
-    const float radius = 0.015;
+    float radius = 0.02;
     vs_particle_pos = particle_pos;
     vs_particle_radius = radius;
 
