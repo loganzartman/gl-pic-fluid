@@ -2,7 +2,7 @@
 
 *Realtime 3D particle-in-cell fluid simulation*
 
-<img src="promo1.png" alt="promo picture" style="margin: auto; width:500px;"/>
+<img src="promo2.png" alt="promo picture" style="margin: auto;"/>
 
 ## Requirements
 
@@ -16,6 +16,30 @@
 2. `cd build`
 3. `cmake ..`
 4. Use generated build system
+
+## Running
+
+1. `cd build`
+2. `bin/fluid`
+
+Controls:
+* `space` - play/pause
+* `s` - step
+* `r` - reset
+* `f` - toggle screen space fluid rendering
+* `p` - toggle particle visibility (for viewing grid)
+* PIC/FLIP blending controls
+    * `home` - set FLIP 0.9
+    * `end` - set FLIP 0.0 (PIC)
+    * `page up` - increase FLIP
+    * `page down` - decrease FLIP
+* Grid visualization controls
+    * `g` - toggle grid visualization
+    * `1` - cell type
+    * `2` - velocity
+    * `3` - divergence
+    * `4` - pressure solver A coefficients
+    * `5` - pressure
 
 ## Development
 
