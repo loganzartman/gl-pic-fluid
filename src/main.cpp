@@ -61,6 +61,23 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
             game->use_ssf = !game->use_ssf;
         }
 
+        if (key == GLFW_KEY_PAGE_DOWN) {
+            game->fluid.pic_flip_blend = std::max(0.f, game->fluid.pic_flip_blend - 0.05f);
+            std::cout << "PIC/FLIP blend " << game->fluid.pic_flip_blend << std::endl;
+        }
+        if (key == GLFW_KEY_PAGE_UP) {
+            game->fluid.pic_flip_blend = std::min(1.f, game->fluid.pic_flip_blend + 0.05f);
+            std::cout << "PIC/FLIP blend " << game->fluid.pic_flip_blend << std::endl;
+        }
+        if (key == GLFW_KEY_HOME) {
+            game->fluid.pic_flip_blend = 0.9f;
+            std::cout << "PIC/FLIP blend " << game->fluid.pic_flip_blend << std::endl;
+        }
+        if (key == GLFW_KEY_END) {
+            game->fluid.pic_flip_blend = 0.f;
+            std::cout << "PIC/FLIP blend " << game->fluid.pic_flip_blend << std::endl;
+        }
+
         if (key == GLFW_KEY_1) {
             game->grid_display_mode = 0;
         }

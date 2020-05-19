@@ -38,6 +38,7 @@ struct Fluid {
     glm::vec3 look{0, 0, 1};
     glm::vec3 eye{0, 0, 0};
     glm::ivec2 resolution{0, 0};
+    float pic_flip_blend = 0.9;
 
     gfx::Buffer viewport_rect{GL_ARRAY_BUFFER};
     gfx::Buffer particle_ssbo{GL_SHADER_STORAGE_BUFFER}; // particle data storage
@@ -501,7 +502,7 @@ struct Fluid {
         glUniform3fv(grid_to_particle_program.uniform_loc("bounds_min"), 1, glm::value_ptr(bounds_min));
         glUniform3fv(grid_to_particle_program.uniform_loc("bounds_max"), 1, glm::value_ptr(bounds_max));
         glUniform3iv(grid_to_particle_program.uniform_loc("grid_dim"), 1, glm::value_ptr(grid_dimensions));
-        glUniform1f(grid_to_particle_program.uniform_loc("pic_flip_blend"), 0.9);
+        glUniform1f(grid_to_particle_program.uniform_loc("pic_flip_blend"), pic_flip_blend);
         grid_to_particle_program.validate();
         glDispatchCompute(particle_ssbo.length(), 1, 1);
         grid_to_particle_program.disuse();
