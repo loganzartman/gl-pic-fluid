@@ -10,6 +10,9 @@ uniform vec3 look;
 
 out vec4 frag_color;
 
+const vec3 k_absorption = vec3(0.3, 0.12, 0.05);
+const vec3 k_reflection = vec3(1);
+
 void main() {
     vec2 uv = gl_FragCoord.xy / vec2(resolution);
     float thickness = texture(color_tex, uv).r;
@@ -43,8 +46,18 @@ void main() {
     vec3 world_pos = (inv_view * eye_pos).xyz;
 
     // beer's law (light absorption)
-    const vec3 absorption =  vec3(0.3, 0.12, 0.05);
-    vec3 transmitted_color = exp(-5 * absorption * thickness);
-    frag_color = vec4(transmitted_color, thickness);
+    vec3 transmitted_color = exp(-5 * k_absorption * thickness);
+
+    // fresnel's law approximation
+    // http://developer.download.nvidia.com/CgTutorial/cg_tutorial_chapter07.html
+    const float fresnel_bias = 0;
+    const float fresnel_scale = 1;
+    const float fresnel_power = 3;
+    float r = max(0, min(1, fresnel_bias + fresnel_scale * pow(1 + dot(-normalize(look), normal), fresnel_power)));
+
+    vec3 reflected_color = k_reflection;
+    vec3 fluid_color = r * reflected_color + (1 - r) * transmitted_color;
+
+    frag_color = vec4(fluid_color, thickness);
     gl_FragDepth = depth;
 }
