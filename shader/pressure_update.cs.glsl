@@ -42,13 +42,14 @@ void main() {
         cell[index].vel_unknown = 1;
     }
 
-    // if (grid_pos.x == grid_dim.x - 1) {
-    //     cell[index].vel.x = cell[get_grid_index(grid_pos + ivec3(-1, 0, 0))].vel.x;
-    // }
-    // if (grid_pos.y == grid_dim.y - 1) {
-    //     cell[index].vel.y = cell[get_grid_index(grid_pos + ivec3(0, -1, 0))].vel.y;
-    // }
-    // if (grid_pos.z == grid_dim.z - 1) {
-    //     cell[index].vel.z = cell[get_grid_index(grid_pos + ivec3(0, 0, -1))].vel.z;
-    // }
+    // hack to tempfix bug for demo
+    if (grid_pos.x == grid_dim.x - 1) {
+        cell[index].vel.x = cell[get_grid_index(grid_pos + ivec3(-1, 0, 0))].vel.x;
+    }
+    if (grid_pos.y == grid_dim.y - 1) {
+        cell[index].vel.y = cell[get_grid_index(grid_pos + ivec3(0, -1, 0))].vel.y;
+    }
+    if (grid_pos.z == grid_dim.z - 1) {
+        cell[index].vel.z = cell[get_grid_index(grid_pos + ivec3(0, 0, -1))].vel.z;
+    }
 }

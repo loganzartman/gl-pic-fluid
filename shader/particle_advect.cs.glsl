@@ -31,8 +31,8 @@ void main() {
     particle[index].pos += particle[index].vel * dt;
     
     // jitter particle positions to prevent squishing
-    // const float jitter = 0.01;
-    // particle[index].pos += hash3(floatBitsToInt(particle[index].pos)) * jitter - 0.5 * jitter;
+    const float jitter = 0.005;
+    particle[index].pos += hash3(floatBitsToInt(particle[index].pos)) * jitter - 0.5 * jitter;
 
     vec3 epsilon = vec3(0.00001);//cell_size - 0.01;
     particle[index].pos = clamp(particle[index].pos, bounds_min + epsilon, bounds_max - epsilon);
