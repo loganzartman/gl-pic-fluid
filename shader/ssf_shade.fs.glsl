@@ -1,6 +1,7 @@
 layout(binding=0) uniform sampler2D color_tex;
 layout(binding=1) uniform sampler2D depth_tex;
 layout(binding=2) uniform sampler2D sphere_pos_tex;
+layout(binding=3) uniform sampler2D scene_tex;
 
 uniform ivec2 resolution;
 uniform mat4 projection;
@@ -10,12 +11,13 @@ uniform vec3 look;
 
 out vec4 frag_color;
 
-const vec3 k_absorption = vec3(0.3, 0.12, 0.05);
-const vec3 k_reflection = vec3(1);
+const float base_translucency = 0.2;
+const vec3 k_absorption = vec3(0.9, 0.22, 0.05);
+const vec4 k_reflection = vec4(1);
 
 void main() {
     vec2 uv = gl_FragCoord.xy / vec2(resolution);
-    float thickness = texture(color_tex, uv).r;
+    float thickness = 1 - pow(1 - texture(color_tex, uv).r, 3);
     float depth = texture(depth_tex, uv).x;
 
     // compute normals with finite differences
@@ -46,18 +48,21 @@ void main() {
     vec3 world_pos = (inv_view * eye_pos).xyz;
 
     // beer's law (light absorption)
-    vec3 transmitted_color = exp(-5 * k_absorption * thickness);
+    vec3 absorption_color = exp(-3 * k_absorption * thickness);
+    vec3 refracted_color = texture(scene_tex, uv).rgb;
+    float translucency = max(base_translucency, 1 - pow(thickness, 1));
+    vec3 transmitted_color = (1 - translucency) * absorption_color + translucency * refracted_color;
 
     // fresnel's law approximation
     // http://developer.download.nvidia.com/CgTutorial/cg_tutorial_chapter07.html
     const float fresnel_bias = 0;
-    const float fresnel_scale = 1;
-    const float fresnel_power = 3;
+    const float fresnel_scale = 2;
+    const float fresnel_power = 5;
     float r = max(0, min(1, fresnel_bias + fresnel_scale * pow(1 + dot(-normalize(look), normal), fresnel_power)));
 
-    vec3 reflected_color = k_reflection;
-    vec3 fluid_color = r * reflected_color + (1 - r) * transmitted_color;
+    vec3 reflected_color = k_reflection.rgb;
+    float rt_mix = r * k_reflection.a;
+    frag_color = vec4(rt_mix * reflected_color + (1 - rt_mix) * transmitted_color, 1);
 
-    frag_color = vec4(fluid_color, thickness);
     gl_FragDepth = depth;
 }

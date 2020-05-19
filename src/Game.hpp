@@ -13,8 +13,11 @@
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtx/vec_swizzle.hpp>
 
+#include "gfx/program.hpp"
+#include "gfx/rendertexture.hpp"
 #include "Box.hpp"
 #include "Fluid.hpp"
+#include "Quad.hpp"
 #include "util.hpp"
 
 class Game {
@@ -42,15 +45,21 @@ public:
 
     Box box;
 
+    gfx::RenderTexture scene_texture;
+    gfx::Program texture_copy_program;
+    Quad quad;
+
     Game(GLFWwindow* window) : window(window) {}
 
     void init() {
         srand(time(0));
         fluid.init();
+        texture_copy_program.vertex({"screen_quad.vs.glsl"}).fragment({"texture_copy.fs.glsl"}).compile();
     }
 
     void resize(uint w, uint h) {
         fluid.resize(w, h);
+        scene_texture.set_texture_size(w, h);
     }
 
     void update_camera() {
@@ -100,29 +109,47 @@ public:
         }
         old_world_mouse_pos = fluid.world_mouse_pos;
 
-        // clear screen
-        glClearColor(0.16, 0.14, 0.10, 1.0);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glEnable(GL_DEPTH_TEST);
-        glEnable(GL_BLEND);
-        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
-
+        // simulation step
         if (running or do_step) {
             do_step = false;
             fluid.step();
             fluid.ssbo_barrier();
         }
 
-        if (grid_visible)
-            fluid.draw_grid(projection, view, grid_display_mode);
-        if (particles_visible) {
-            if (use_ssf)
-                fluid.draw_particles_ssf(projection, view, viewport);
-            else
+        // clear screen
+        glClearColor(0, 0, 0, 1.0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // render the scene
+        scene_texture.bind_framebuffer();
+            // clear scene buffer
+            glClearColor(0.16, 0.14, 0.10, 1.0);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            glEnable(GL_DEPTH_TEST);
+            glEnable(GL_BLEND);
+            glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+
+            box.draw(projection, view, eye);
+            if (!use_ssf and particles_visible)
                 fluid.draw_particles(projection, view, viewport);
-        }
+            if (grid_visible)
+                fluid.draw_grid(projection, view, grid_display_mode);
+        scene_texture.unbind_framebuffer();
+
+        // copy scene buffer to screen
+        texture_copy_program.use();
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, scene_texture.color_id);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, scene_texture.depth_id);
+        quad.draw();
+        texture_copy_program.disuse();
+
+        // render screen space fluid if applicable
+        if (use_ssf and particles_visible)
+            fluid.draw_particles_ssf(scene_texture, projection, view, viewport);
 
         fluid.draw_debug_lines(projection, view);
-        box.draw(projection, view, eye);
     }
 };

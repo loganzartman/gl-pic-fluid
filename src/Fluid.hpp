@@ -15,6 +15,7 @@
 #include "P2GTransfer.hpp"
 #include "SSFBufferElement.hpp"
 #include "SSFRenderTexture.hpp"
+#include "Quad.hpp"
 #include "util.hpp"
 #include "gfx/object.hpp"
 #include "gfx/program.hpp"
@@ -75,6 +76,8 @@ struct Fluid {
     SSFRenderTexture ssf_a_texture; // stores sphere color/depth data, and world space position
     SSFRenderTexture ssf_b_texture; // it's double buffered for read/write
 
+    Quad quad;
+
     Fluid() {}
 
     void init() {
@@ -106,13 +109,6 @@ struct Fluid {
             .bind_attrib(debug_lines_ssbo, offsetof(DebugLine, b), sizeof(DebugLine), 3, GL_FLOAT, gfx::NOT_INSTANCED)
             .bind_attrib(debug_lines_ssbo, offsetof(DebugLine, color), sizeof(DebugLine), 4, GL_FLOAT, gfx::NOT_INSTANCED);
         
-        std::vector<glm::vec2> viewport_rect_data;
-        viewport_rect_data.emplace_back(0, 0);
-        viewport_rect_data.emplace_back(1, 0);
-        viewport_rect_data.emplace_back(1, 1);
-        viewport_rect_data.emplace_back(0, 1);
-        viewport_rect.set_data(viewport_rect_data);
-        screen_quad_vao.bind_attrib(viewport_rect, 2, GL_FLOAT);
         
         reset_grid_program.compute({"common.glsl", "reset_grid.cs.glsl"}).compile();
         p2g_accumulate_program.compute({"common.glsl", "p2g_accumulate.cs.glsl"}).compile();
@@ -132,8 +128,8 @@ struct Fluid {
         debug_lines_program.vertex({"debug_lines.vs.glsl"}).geometry({"debug_lines.gs.glsl"}).fragment({"debug_lines.fs.glsl"}).compile();
 
         ssf_spheres_program.vertex({"particles.vs.glsl"}).fragment({"common.glsl", "ssf_spheres.fs.glsl"}).compile();
-        ssf_smooth_program.vertex({"ssf_smooth.vs.glsl"}).fragment({"ssf_smooth.fs.glsl"}).compile();
-        ssf_shade_program.vertex({"ssf_shade.vs.glsl"}).fragment({"lighting.glsl", "ssf_shade.fs.glsl"}).compile();
+        ssf_smooth_program.vertex({"screen_quad.vs.glsl"}).fragment({"ssf_smooth.fs.glsl"}).compile();
+        ssf_shade_program.vertex({"screen_quad.vs.glsl"}).fragment({"lighting.glsl", "ssf_shade.fs.glsl"}).compile();
     }
 
     void init_ssbos() {
@@ -554,7 +550,7 @@ struct Fluid {
         program.disuse();
     }
 
-    void draw_particles_ssf(const glm::mat4& projection, const glm::mat4& view, const glm::vec4& viewport) {
+    void draw_particles_ssf(const gfx::RenderTexture& scene_texture, const glm::mat4& projection, const glm::mat4& view, const glm::vec4& viewport) {
         constexpr static GLenum ssf_draw_buffers[]{GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
 
         // render spheres and position data
@@ -598,17 +594,15 @@ struct Fluid {
         glDisable(GL_BLEND);
         ssf_smooth_program.use();
             glUniform2iv(ssf_smooth_program.uniform_loc("resolution"), 1, glm::value_ptr(resolution));
-            screen_quad_vao.bind();
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, ssf_a_texture.color1_id);
             ssf_b_texture.bind_framebuffer();
             glDrawBuffers(2, ssf_draw_buffers);
             glClearColor(0, 0, 0, 1);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glDrawArrays(GL_TRIANGLE_FAN, 0, viewport_rect.length());
+            quad.draw();
             ssf_b_texture.unbind_framebuffer();
             glBindTexture(GL_TEXTURE_2D, 0);
-            screen_quad_vao.unbind();
         ssf_smooth_program.disuse();
 
         // shade fluid
@@ -619,16 +613,16 @@ struct Fluid {
             glUniformMatrix4fv(ssf_shade_program.uniform_loc("inv_view"), 1, GL_FALSE, glm::value_ptr(glm::inverse(view)));
             glUniform3fv(ssf_shade_program.uniform_loc("look"), 1, glm::value_ptr(look));
             glUniform3fv(ssf_shade_program.uniform_loc("eye"), 1, glm::value_ptr(eye));
-            screen_quad_vao.bind();
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, ssf_a_texture.color_id);
             glActiveTexture(GL_TEXTURE1);
             glBindTexture(GL_TEXTURE_2D, ssf_a_texture.depth_id);
             glActiveTexture(GL_TEXTURE2);
             glBindTexture(GL_TEXTURE_2D, ssf_b_texture.color1_id); // sphere position data
-            glDrawArrays(GL_TRIANGLE_FAN, 0, viewport_rect.length());
+            glActiveTexture(GL_TEXTURE3);
+            glBindTexture(GL_TEXTURE_2D, scene_texture.color_id);
+            quad.draw();
             glBindTexture(GL_TEXTURE_2D, 0);
-            screen_quad_vao.unbind();
         ssf_shade_program.disuse();
     }
 

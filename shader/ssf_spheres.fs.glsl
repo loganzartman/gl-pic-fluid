@@ -62,7 +62,7 @@ void main() {
     if (pass == 0) {
         // thickness pass
         float f = (eye_isect.z - (view * vec4(vs_particle_pos, 1)).z) / vs_particle_radius;
-        frag_color = vec4(vec3(f * 0.05), 1);
+        frag_color = vec4(vec3(f * 0.02), 1);
     }
     if (pass == 1) {
         // position pass
