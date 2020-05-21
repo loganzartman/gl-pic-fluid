@@ -4,6 +4,8 @@
 
 <img src="promo3.png" alt="promo picture" style="margin: auto;"/>
 
+[Video Demo](https://www.youtube.com/watch?v=lNG8B_eWKaw)
+
 ## Requirements
 
 * OpenGL >= 4.3
