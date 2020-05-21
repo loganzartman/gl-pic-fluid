@@ -2,9 +2,9 @@
 
 *Realtime 3D particle-in-cell fluid simulation*
 
-<img src="promo3.png" alt="promo picture" style="margin: auto;"/>
-
 [Video Demo](https://www.youtube.com/watch?v=lNG8B_eWKaw)
+
+<img src="promo3.png" alt="promo picture" style="margin: auto;"/>
 
 ## Requirements
 
