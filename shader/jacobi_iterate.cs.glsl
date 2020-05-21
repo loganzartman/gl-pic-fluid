@@ -44,5 +44,6 @@ void main() {
         L_Up += cell[index].a_z * cell[j].pressure_guess;
     }
 
-    cell[index].pressure = 1.0 / cell[index].a_diag * (cell[index].rhs - L_Up);
+    if (cell[index].a_diag != 0)
+        cell[index].pressure = 1.0 / cell[index].a_diag * (cell[index].rhs - L_Up);
 }
