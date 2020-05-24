@@ -31,10 +31,10 @@ internally, which allows full precision but performs much worse.
         // slow but always correct
         #define atomicAddFloat(mem, data) \
             { \
-                uint expected, result; \
+                int expected, result; \
                 do { \
                     expected = mem; \
-                    result = floatBitsToInt(intBitsToFloat(mem) + data); \
+                    result = floatBitsToInt(intBitsToFloat(expected) + data); \
                 } while (atomicCompSwap(mem, expected, result) != expected); \
             }
         #define getAtomicFloat(mem) intBitsToFloat(mem)
