@@ -8,11 +8,11 @@ void main() {
         cell[index].type = FLUID;
 
     if (p2g_transfer[index].weight_u != 0)
-        cell[index].vel.x = fix2float(p2g_transfer[index].u) / fix2float(p2g_transfer[index].weight_u);
+        cell[index].vel.x = getAtomicFloat(p2g_transfer[index].u) / getAtomicFloat(p2g_transfer[index].weight_u);
     if (p2g_transfer[index].weight_v != 0)
-        cell[index].vel.y = fix2float(p2g_transfer[index].v) / fix2float(p2g_transfer[index].weight_v);
+        cell[index].vel.y = getAtomicFloat(p2g_transfer[index].v) / getAtomicFloat(p2g_transfer[index].weight_v);
     if (p2g_transfer[index].weight_w != 0)
-        cell[index].vel.z = fix2float(p2g_transfer[index].w) / fix2float(p2g_transfer[index].weight_w);
+        cell[index].vel.z = getAtomicFloat(p2g_transfer[index].w) / getAtomicFloat(p2g_transfer[index].weight_w);
 
     p2g_transfer[index].u = 0;
     p2g_transfer[index].v = 0;

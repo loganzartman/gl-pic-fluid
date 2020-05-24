@@ -29,16 +29,6 @@ struct DebugLine {
     vec3 b;
 };
 
-struct P2GTransfer {
-    int u;
-    int v;
-    int w;
-    int weight_u;
-    int weight_v;
-    int weight_w;
-    bool is_fluid;
-};
-
 layout(std430, binding=0) restrict buffer ParticleBlock {
     Particle particle[];
 };
@@ -49,10 +39,6 @@ layout(std430, binding=1) restrict buffer GridBlock {
 
 layout(std430, binding=2) restrict buffer DebugLinesBlock {
     DebugLine debug_lines[];
-};
-
-layout(std430, binding=3) coherent buffer P2GTransferBlock {
-    P2GTransfer p2g_transfer[];
 };
 
 uniform ivec3 grid_dim;
@@ -94,15 +80,4 @@ ivec3 offset_clamped(ivec3 base_coord, ivec3 dimension_offset) {
     if (dimension_offset.z > 0)
         max_size.z = grid_dim.z;
     return clamp(base_coord + dimension_offset, ivec3(0), max_size - ivec3(1));
-}
-
-const int MAX_INT = 2147483647;
-const int FIXED_SCALE = MAX_INT / 10000;
-
-int float2fix(float f) {
-    return int(round(f * FIXED_SCALE));
-}
-
-float fix2float(int fix) {
-    return fix / float(FIXED_SCALE);
 }

@@ -7,16 +7,16 @@ void scatter_part(ivec3 coord, vec3 weights, vec3 vel) {
     float weight = weights.x * weights.y * weights.z;
     // TODO: set velocity unknown flag
     if (vel.x != 0) {
-        atomicAdd(p2g_transfer[index].u, float2fix(vel.x * weight));
-        atomicAdd(p2g_transfer[index].weight_u, float2fix(weight));
+        atomicAddFloat(p2g_transfer[index].u, vel.x * weight);
+        atomicAddFloat(p2g_transfer[index].weight_u, weight);
     }
     if (vel.y != 0) {
-        atomicAdd(p2g_transfer[index].v, float2fix(vel.y * weight));
-        atomicAdd(p2g_transfer[index].weight_v, float2fix(weight));
+        atomicAddFloat(p2g_transfer[index].v, vel.y * weight);
+        atomicAddFloat(p2g_transfer[index].weight_v, weight);
     }
     if (vel.z != 0) {
-        atomicAdd(p2g_transfer[index].w, float2fix(vel.z * weight));
-        atomicAdd(p2g_transfer[index].weight_w, float2fix(weight));
+        atomicAddFloat(p2g_transfer[index].w, vel.z * weight);
+        atomicAddFloat(p2g_transfer[index].weight_w, weight);
     }
 }
 
