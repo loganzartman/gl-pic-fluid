@@ -143,6 +143,10 @@ int main() {
     glfwMakeContextCurrent(window);
     gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
     std::cout << "** GL Version: " << GLVersion.major << "." << GLVersion.minor << std::endl;
+    
+    GLint supports_nv_atomic_float;
+    glGetIntegerv(GL_NV_shader_atomic_float, &supports_nv_atomic_float);
+    std::cout << "NV_shader_atomic_float " << (supports_nv_atomic_float ? "IS" : "NOT") << " supported" << std::endl;
 
     glfwSwapInterval(1); // enable vsync (0 to disable)
 
