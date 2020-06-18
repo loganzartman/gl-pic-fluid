@@ -14,10 +14,11 @@
 
 ## Building
 
-1. `mkdir build`
-2. `cd build`
-3. `cmake ..`
-4. Use generated build system
+1. `git submodule update --init --recursive`
+2. `mkdir build`
+3. `cd build`
+4. `cmake ..`
+5. Use generated build system
 
 ## Running
 
