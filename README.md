@@ -2,6 +2,10 @@
 
 *Realtime 3D particle-in-cell fluid simulation*
 
+Based on Robert Bridson's *Fluid Simulation for Computer Graphics, 2nd ed.*
+
+Implements NVidia's ["Screen Space Fluid Rendering for Games"](http://developer.download.nvidia.com/presentations/2010/gdc/Direct3D_Effects.pdf).
+
 [Video Demo](https://www.youtube.com/watch?v=lNG8B_eWKaw)
 
 <img src="promo3.png" alt="promo picture" style="margin: auto;"/>
