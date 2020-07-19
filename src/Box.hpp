@@ -38,7 +38,7 @@ struct Box {
         glUniformMatrix4fv(program.uniform_loc("view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniform3fv(program.uniform_loc("eye"), 1, glm::value_ptr(eye));
         vao.bind();
-        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, std::array<uint, 36>{
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, std::array<unsigned int, 36>{
             0, 3, 2, 2, 1, 0, 0, 5, 4, 4, 3, 0, 0, 1, 6, 6, 5, 0, 5, 6, 7, 7,
             4, 5, 1, 2, 7, 7, 6, 1, 3, 4, 7, 7, 2, 3
         }.data());

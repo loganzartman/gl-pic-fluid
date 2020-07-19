@@ -16,6 +16,7 @@ set(LIBS glad glfw glm)
 add_executable(fluid)
 add_subdirectory(src)
 target_link_libraries(fluid ${LIBS})
+target_include_directories(fluid PUBLIC include)
 
 # googletest and tests
 add_subdirectory(googletest)
@@ -38,6 +39,3 @@ set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(glfw)
 
-# add eigen
-find_package (Eigen3 3.3 REQUIRED NO_MODULE)
-target_link_libraries (fluid Eigen3::Eigen)

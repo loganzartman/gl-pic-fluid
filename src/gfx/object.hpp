@@ -171,7 +171,7 @@ public:
         return bind_attrib(buffer, 0, type_size.at(type) * num_components, num_components, type, divisor);
     }
 
-    VAO& bind_attrib(const Buffer& buffer, uint offset_bytes, GLuint stride, GLuint num_components, GLenum type, GLuint divisor) {
+    VAO& bind_attrib(const Buffer& buffer, unsigned int offset_bytes, GLuint stride, GLuint num_components, GLenum type, GLuint divisor) {
         if (buffer.id == 0) {
             throw std::runtime_error("Buffer not initialized.");
         }

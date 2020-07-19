@@ -110,7 +110,7 @@ public:
         old_world_mouse_pos = fluid.world_mouse_pos;
 
         // simulation step
-        if (running or do_step) {
+        if (running || do_step) {
             do_step = false;
             fluid.step();
             fluid.ssbo_barrier();
@@ -131,7 +131,7 @@ public:
             glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
 
             box.draw(projection, view, eye);
-            if (!use_ssf and particles_visible)
+            if (!use_ssf && particles_visible)
                 fluid.draw_particles(projection, view, viewport);
             if (grid_visible)
                 fluid.draw_grid(projection, view, grid_display_mode);
@@ -147,7 +147,7 @@ public:
         texture_copy_program.disuse();
 
         // render screen space fluid if applicable
-        if (use_ssf and particles_visible)
+        if (use_ssf && particles_visible)
             fluid.draw_particles_ssf(scene_texture, projection, view, viewport);
 
         fluid.draw_debug_lines(projection, view);

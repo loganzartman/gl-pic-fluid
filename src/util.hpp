@@ -6,6 +6,8 @@
 #include <vector>
 #include <glad/glad.h>
 
+#define uint unsigned int
+
 static void check_program_errors(GLuint program_id) {
     GLint is_ok = 0;
     glGetProgramiv(program_id, GL_LINK_STATUS, &is_ok);

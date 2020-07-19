@@ -24,8 +24,8 @@
 struct Fluid {
     const int num_circle_vertices = 16; // circle detail for particle rendering
 
-    const int particle_density = 16;
-    const int grid_size = 24;
+    const int particle_density = 8;
+    const int grid_size = 16;
     const glm::ivec3 grid_dimensions{grid_size + 1, grid_size + 1, grid_size + 1};
     const glm::ivec3 grid_cell_dimensions{grid_size, grid_size, grid_size};
     const glm::vec3 bounds_min{-1, -1, -1};
@@ -153,7 +153,7 @@ struct Fluid {
                             GRID_FLUID
                         });
                         
-                        if (gx < grid_cell_dimensions.x and gy < grid_cell_dimensions.y and gz < grid_cell_dimensions.z) {
+                        if (gx < grid_cell_dimensions.x && gy < grid_cell_dimensions.y && gz < grid_cell_dimensions.z) {
                             for (int i = 0; i < particle_density; ++i) {
                                 const glm::vec3 particle_pos = glm::linearRand(cell_pos, cell_pos + cell_size);
                                 initial_particles.emplace_back(Particle{
@@ -206,8 +206,8 @@ struct Fluid {
     }
 
     bool grid_in_bounds(const glm::ivec3& grid_coord) {
-        return (grid_coord.x >= 0 and grid_coord.y >= 0 and grid_coord.z >= 0 and
-                grid_coord.x < grid_dimensions.x and grid_coord.y < grid_dimensions.y and grid_coord.z < grid_dimensions.z);
+        return (grid_coord.x >= 0 && grid_coord.y >= 0 && grid_coord.z >= 0 &&
+                grid_coord.x < grid_dimensions.x && grid_coord.y < grid_dimensions.y && grid_coord.z < grid_dimensions.z);
     }
 
     int get_grid_index(const glm::ivec3& grid_coord) {
@@ -232,7 +232,7 @@ struct Fluid {
     }
 
     void particle_to_grid_cpu() {
-        const auto particles = particle_ssbo.map_buffer_readonly<Particle>();
+        auto particles = particle_ssbo.map_buffer<Particle>();
         auto grid = grid_ssbo.map_buffer<GridCell>();
 
         // clear grid values
@@ -240,7 +240,7 @@ struct Fluid {
             for (int y = 0; y < grid_dimensions.y; ++y) {
                 for (int z = 0; z < grid_dimensions.z; ++z) {
                     const int i = get_grid_index({x, y, z});
-                    grid[i].type = (x < grid_cell_dimensions.x and y < grid_cell_dimensions.y and z < grid_cell_dimensions.z) ? GRID_AIR : GRID_SOLID;
+                    grid[i].type = (x < grid_cell_dimensions.x && y < grid_cell_dimensions.y && z < grid_cell_dimensions.z) ? GRID_AIR : GRID_SOLID;
                     grid[i].vel = glm::vec3(0);
                 }
             }
@@ -425,7 +425,7 @@ struct Fluid {
         const glm::ivec3& dim = grid_cell_dimensions;
         const int n = glm::compMul(dim);
         auto in_bounds = [&](const glm::ivec3& c) {
-            return c.x >= 0 and c.y >= 0 and c.z >= 0 and c.x < dim.x and c.y < dim.y and c.z < dim.z;
+            return c.x >= 0 && c.y >= 0 && c.z >= 0 && c.x < dim.x && c.y < dim.y && c.z < dim.z;
         };
         auto index = [&](const glm::ivec3& c){
             return c.x * (dim.x * dim.y) + c.y * dim.x + c.z;
