@@ -18,7 +18,7 @@ const vec4 k_reflection = vec4(1);
 
 void main() {
     vec2 uv = gl_FragCoord.xy / vec2(resolution);
-    float thickness = 1 - pow(1 - texture(color_tex, uv).r, 3);
+    float thickness = 1 - pow(1 - texture(color_tex, uv).r, 10);
     float depth = texture(depth_tex, uv).x;
 
     // compute normals with finite differences
@@ -29,18 +29,14 @@ void main() {
     vec4 eye_pos_nx = texture(sphere_pos_tex, uv + vec2(-1.0 / resolution.x, 0));
     vec4 eye_pos_ny = texture(sphere_pos_tex, uv + vec2(0, -1.0 / resolution.y));
 
-    // choose smaller difference to handle edges
-    vec3 ab, ac;
-    if (abs(eye_pos_px.z - eye_pos.z) < abs(eye_pos_nx.z - eye_pos.z)) {
-        ab = eye_pos_px.xyz - eye_pos.xyz;
-    } else {
-        ab = eye_pos.xyz - eye_pos_nx.xyz;
-    }
-    if (abs(eye_pos_py.z - eye_pos.z) < abs(eye_pos_ny.z - eye_pos.z)) {
-        ac = eye_pos_py.xyz - eye_pos.xyz;
-    } else {
-        ac = eye_pos.xyz - eye_pos_ny.xyz;
-    }
+    vec3 ab1 = eye_pos_px.xyz - eye_pos.xyz;
+    vec3 ab2 = eye_pos.xyz - eye_pos_nx.xyz;
+    vec3 ab3 = eye_pos_px.xyz - eye_pos_nx.xyz;
+    vec3 ac1 = eye_pos_py.xyz - eye_pos.xyz;
+    vec3 ac2 = eye_pos.xyz - eye_pos_ny.xyz;
+    vec3 ac3 = eye_pos_py.xyz - eye_pos_ny.xyz;
+    vec3 ab = 0.33333 * (ab1 + ab2 + ab3);
+    vec3 ac = 0.33333 * (ac1 + ac2 + ac3);
 
     // compute normal
     vec3 eye_normal = cross(ab, ac);
@@ -58,14 +54,16 @@ void main() {
 
     // fresnel's law approximation
     // http://developer.download.nvidia.com/CgTutorial/cg_tutorial_chapter07.html
-    const float fresnel_bias = 0;
-    const float fresnel_scale = 2;
-    const float fresnel_power = 5;
+    const float fresnel_bias = -0.1;
+    const float fresnel_scale = 1;
+    const float fresnel_power = 3;
     float r = max(0, min(1, fresnel_bias + fresnel_scale * pow(1 + dot(-normalize(look), normal), fresnel_power)));
 
     vec3 reflected_color = k_reflection.rgb;
     float rt_mix = r * k_reflection.a;
     frag_color = vec4(rt_mix * reflected_color + (1 - rt_mix) * transmitted_color, 1);
+    // frag_color = vec4(normal * 0.5 + 0.5, 1.0);
+    // frag_color = vec4(vec3(-eye_pos.z - 4.5) / 3, 1.0);
 
     gl_FragDepth = depth;
 }
