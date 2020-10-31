@@ -22,7 +22,7 @@
 #include "gfx/rendertexture.hpp"
 
 struct Fluid {
-    const int num_circle_vertices = 16; // circle detail for particle rendering
+    const int num_circle_vertices = 8; // circle detail for particle rendering
 
     const int particle_density = 8;
     const int grid_size = 24;
@@ -386,7 +386,7 @@ struct Fluid {
     }
 
     void pressure_solve() {
-        const int iters = 40;
+        const int iters = 20;
 
         jacobi_iterate_program.use();
         set_common_uniforms(jacobi_iterate_program);
@@ -528,7 +528,7 @@ struct Fluid {
     }
 
     void step() {
-        const float dt = 0.02;
+        const float dt = 0.03;
         particle_to_grid();
         // extrapolate();
         apply_body_forces(dt);
