@@ -72,11 +72,12 @@ void main() {
     float ov = lerp_old_vel(index, ivec3(0, 1, 0)).y;
     float ow = lerp_old_vel(index, ivec3(0, 0, 1)).z;
 
-    float flipu = particle[index].vel.x + u - ou;
-    float flipv = particle[index].vel.y + v - ov;
-    float flipw = particle[index].vel.z + w - ow;
+    float flipu = particle[index].vel.x + (u - ou);
+    float flipv = particle[index].vel.y + (v - ov);
+    float flipw = particle[index].vel.z + (w - ow);
 
     particle[index].vel.x = u * (1 - pic_flip_blend) + flipu * pic_flip_blend;
     particle[index].vel.y = v * (1 - pic_flip_blend) + flipv * pic_flip_blend;
     particle[index].vel.z = w * (1 - pic_flip_blend) + flipw * pic_flip_blend;
+    particle[index].pos += particle[index].vel / 60.0;
 }

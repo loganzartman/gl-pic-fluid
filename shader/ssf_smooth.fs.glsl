@@ -10,7 +10,7 @@ float resolution_factor = resolution.y / 300;
 
 // based on https://www.shadertoy.com/view/4dfGDH
 #define ITERS 32
-#define KERNEL_SIZE 32.0
+#define KERNEL_SIZE 12.0
 #define SIGMA 32.0
 #define BSIGMA 0.3
 
@@ -23,6 +23,19 @@ vec3 hash3(uvec3 x) {
     return vec3(x)*(1.0/float(0xffffffffU));
 }
 
+vec3 hashi3(uint n) {
+    // integer hash copied from Hugo Elias
+	n = (n << 13U) ^ n;
+    n = n * (n * n * 15731U + 789221U) + 1376312589U;
+    uvec3 k = n * uvec3(n,n*16807U,n*48271U);
+    return vec3( k & uvec3(0x7fffffffU))/float(0x7fffffff);
+}
+
+vec2 getOffset(vec2 frag_coord, int i) {
+    // vec3 rand = hash3(uvec3(frag_coord.xy, i));
+    vec3 rand = hashi3(uint((frag_coord.y * resolution.x + frag_coord.x) * ITERS + i));
+    return vec2(rand.x * rand.z, rand.y);
+}
 
 float normpdf(in float x, in float sigma) {
 	return 0.39894*exp(-0.5*x*x/(sigma*sigma))/sigma;
@@ -36,27 +49,22 @@ void main() {
     vec4 src_sphere_pos = texelFetch(sphere_pos_tex, ivec2(gl_FragCoord.xy), 0);
     float depth = src_sphere_pos.z;
     
-    float Z = 0;
-    float final_depth = 0;
-    float bZ = 1.0 / normpdf(0.0, BSIGMA);
+    float n = 0;
+    float d = 0;
+
     for (int i = 0; i < ITERS; ++i) {
-        // random position on disc
-        vec2 rand = hash3(uvec3(gl_FragCoord.xy * i, -i)).xy;
-        float disp_angle = rand.x * 6.28;
-        float disp_len = rand.y * KERNEL_SIZE;
-        vec2 displacement = vec2(
-            cos(disp_angle) * disp_len, 
-            sin(disp_angle) * disp_len
-        );
+        vec2 offset = getOffset(gl_FragCoord.xy, i);
+        float len = offset.x * KERNEL_SIZE;
+        float angle = offset.y * 6.28;
+        vec2 disp = vec2(cos(angle) * len, sin(angle) * len);
 
-        float f = normpdf(disp_len, SIGMA);
-
-        // bilateral filter
-        float cur_depth = texelFetch(sphere_pos_tex, ivec2(floor(gl_FragCoord.xy + displacement)), 0).z;
-        float factor = normpdf(cur_depth - depth, BSIGMA) * bZ * f;
-        Z += factor;
-        final_depth += factor * cur_depth;
+        float sample_depth = texelFetch(sphere_pos_tex, ivec2(floor(gl_FragCoord.xy + disp)), 0).z;
+        float factor = normpdf(len, SIGMA);
+        factor *= normpdf(sample_depth - depth, BSIGMA);
+        n += sample_depth * factor;
+        d += factor;
     }
 
-    sphere_pos = vec4(src_sphere_pos.xy, final_depth / Z, src_sphere_pos.w);
+    float final_depth = n / d;
+    sphere_pos = vec4(src_sphere_pos.xy, final_depth, src_sphere_pos.w);
 }

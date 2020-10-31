@@ -27,11 +27,9 @@ bool ray_sphere_isect(vec3 r0, vec3 rd, vec3 s0, float sr) {
 
 void main() {
     uint index = gl_WorkGroupID.x;
-    // TODO: don't use explicit Euler integration
-    particle[index].pos += particle[index].vel * dt;
     
     // jitter particle positions to prevent squishing
-    const float jitter = 0.005;
+    const float jitter = 0.00;
     particle[index].pos += hash3(floatBitsToInt(particle[index].pos)) * jitter - 0.5 * jitter;
 
     vec3 epsilon = vec3(0.00001);//cell_size - 0.01;
