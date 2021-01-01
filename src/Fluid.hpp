@@ -112,8 +112,8 @@ struct Fluid {
         
         
         reset_grid_program.compute({"common.glsl", "reset_grid.cs.glsl"}).compile();
-        p2g_accumulate_program.compute({"common.glsl", "atomic.glsl", "p2g_common.glsl", "p2g_accumulate.cs.glsl"}).compile();
-        p2g_apply_program.compute({"common.glsl", "atomic.glsl", "p2g_common.glsl", "p2g_apply.cs.glsl"}).compile();
+        p2g_accumulate_program.compute({"atomic.glsl", "common.glsl", "p2g_common.glsl", "p2g_accumulate.cs.glsl"}).compile();
+        p2g_apply_program.compute({"atomic.glsl", "common.glsl", "p2g_common.glsl", "p2g_apply.cs.glsl"}).compile();
         grid_to_particle_program.compute({"common.glsl", "grid_to_particle.cs.glsl"}).compile();
         extrapolate_program.compute({"common.glsl", "extrapolate.cs.glsl"}).compile();
         set_vel_known_program.compute({"common.glsl", "set_vel_known.cs.glsl"}).compile();
